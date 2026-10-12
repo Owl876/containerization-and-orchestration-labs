@@ -286,9 +286,9 @@ kubectl create secret generic telegram-bridge-secrets -n monitoring \
 
 В итоге на самый "наш" алерт прилетает не строчка текста, а стикер панды плюс пояснение:
 
-<video src="report/screenshots/10-telegram-sticker.mp4" controls width="360"></video>
+![PandaEnergyExhausted долетает до Telegram вместе со стикером](report/screenshots/10-telegram-sticker.gif)
 
-*Видео: `PandaEnergyExhausted` долетает до Telegram вместе со стикером*
+*GIF: `PandaEnergyExhausted` долетает до Telegram вместе со стикером*
 
 ![Маршрутизация алертов видна в Alertmanager по receiver'ам](report/screenshots/11-alertmanager-telegram-routing.png)
 
