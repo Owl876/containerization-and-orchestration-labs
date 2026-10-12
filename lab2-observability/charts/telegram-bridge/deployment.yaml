@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telegram-bridge
+  labels:
+    app: telegram-bridge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telegram-bridge
+  template:
+    metadata:
+      labels:
+        app: telegram-bridge
+    spec:
+      containers:
+        - name: telegram-bridge
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8000
+          env:
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: bot-token
+            - name: TELEGRAM_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: chat-id
+            - name: TELEGRAM_STICKER_FILE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: sticker-file-id
+            {{- if .Values.telegramProxyUrl }}
+            - name: TELEGRAM_PROXY_URL
+              value: {{ .Values.telegramProxyUrl | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000

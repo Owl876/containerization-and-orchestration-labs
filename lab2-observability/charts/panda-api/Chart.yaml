@@ -1,0 +1,6 @@
+apiVersion: v2
+name: panda-api
+description: Панда-сервис для лабы по observability (RED-метрики, логи, трейсы)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

@@ -1,0 +1,27 @@
+image:
+  repository: telegram-bridge
+  tag: local
+  # как и api — собран внутри minikube, наружу не тянем
+  pullPolicy: Never
+
+service:
+  port: 8000
+
+# ISP блокирует api.telegram.org напрямую — заворачиваем через локальный SOCKS5
+# VPN-клиента на хосте, прокинутый socat'ом наружу (см. README-lab.md, Грабли)
+telegramProxyUrl: "socks5://host.minikube.internal:18080"
+
+# Секрет создаётся вручную (не из values.yaml!), чтобы токен бота не попал в git:
+#   kubectl create secret generic telegram-bridge-secrets \
+#     --from-literal=bot-token=<TOKEN> \
+#     --from-literal=chat-id=<CHAT_ID> \
+#     --from-literal=sticker-file-id=<FILE_ID>
+existingSecret: telegram-bridge-secrets
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi

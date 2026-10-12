@@ -1,0 +1,44 @@
+{{- if .Values.alerts.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: panda-api
+  labels:
+    app: panda-api
+spec:
+  groups:
+    - name: panda-api.rules
+      rules:
+        - alert: PandaHighErrorRate
+          expr: |
+            sum(rate(http_errors_total{job="panda-api"}[5m]))
+              /
+            sum(rate(http_requests_total{job="panda-api"}[5m]))
+              > 0.1
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Панда слишком часто роняет бамбук ({{`{{ $value | humanizePercentage }}`}} ошибок)"
+            description: "Доля 5xx-ответов panda-api превышает 10% последние 5 минут."
+
+        - alert: PandaSlowRequests
+          expr: |
+            histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="panda-api"}[5m])) by (le))
+              > 2
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Панда подвисла — p95 latency {{`{{ $value | humanizeDuration }}`}}"
+            description: "95-й перцентиль времени ответа panda-api выше 2s последние 5 минут."
+
+        - alert: PandaEnergyExhausted
+          expr: min(panda_energy_level) < 15
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Хотя бы одна панда истощена — энергия {{`{{ $value | humanize }}`}}"
+            description: "Минимальный panda_energy_level среди реплик ниже 15 дольше минуты — панде нужен отдых."
+{{- end }}

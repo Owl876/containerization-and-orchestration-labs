@@ -1,0 +1,105 @@
+alertmanager:
+  alertmanagerSpec:
+    # Secret создаётся вручную, НЕ из values.yaml (токен не должен попасть в git):
+    #   kubectl create secret generic telegram-bot-token -n monitoring \
+    #     --from-literal=token=<TOKEN>
+    # Alertmanager примонтирует его файлом в /etc/alertmanager/secrets/telegram-bot-token/token
+    secrets:
+      - telegram-bot-token
+  config:
+    route:
+      receiver: "null"
+      routes:
+        # Watchdog всегда firing (это его смысл — проверка, что пайплайн алертов жив),
+        # в телеграм такое слать каждый раз незачем
+        - match:
+            alertname: Watchdog
+          receiver: "null"
+        # наша бизнес-метрика — через мостик, он же шлёт стикер панды
+        - match:
+            alertname: PandaEnergyExhausted
+          receiver: telegram-sticker-bridge
+        # остальные panda-api алерты — обычным текстом через встроенный telegram receiver
+        - match_re:
+            alertname: PandaHighErrorRate|PandaSlowRequests
+          receiver: telegram-text
+    receivers:
+      - name: "null"
+      - name: telegram-text
+        telegram_configs:
+          - bot_token_file: /etc/alertmanager/secrets/telegram-bot-token/token
+            chat_id: 1001306095
+            # дефолтный шаблон Alertmanager рендерит HTML-теги (<b>...</b>), а parse_mode
+            # Markdown/MarkdownV2 на них спотыкается ("can't parse entities") — проще
+            # вообще отключить парсинг сущностей и слать голым текстом.
+            parse_mode: ""
+            message: |-
+              {{ range .Alerts }}[{{ .Status | toUpper }}] {{ .Labels.alertname }}
+              {{ .Annotations.summary }}
+              {{ .Annotations.description }}
+              {{ end }}
+            http_config:
+              # ISP блокирует api.telegram.org напрямую с хоста/кластера; на хосте есть
+              # VPN-клиент (happ) с локальным SOCKS5 на 127.0.0.1:10808, прокинутым
+              # через socat на 0.0.0.0:18080, чтобы до него дотянулся под в кластере.
+              proxy_url: socks5://host.minikube.internal:18080
+      - name: telegram-sticker-bridge
+        webhook_configs:
+          - url: http://telegram-bridge.monitoring.svc.cluster.local:8000/webhook
+            send_resolved: false
+
+prometheus:
+  prometheusSpec:
+    # по умолчанию Prometheus из этого чарта видит только ServiceMonitor/PodMonitor
+    # с лейблом release: <имя релиза> — отключаем этот фильтр, чтобы подхватывались
+    # вообще все ServiceMonitor в кластере, включая наш собственный для panda-api
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+# На minikube (single-node, driver=docker) control-plane компоненты
+# (etcd, kube-scheduler, kube-controller-manager) слушают только на
+# 127.0.0.1 внутри своих подов и не видны ServiceMonitor'ам оператора —
+# таргеты в Prometheus будут вечно "down". Отключаем, чтобы не засорять
+# Targets и не словить ложные алерты на ровном месте.
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+
+grafana:
+  adminPassword: panda-admin
+  sidecar:
+    dashboards:
+      enabled: true
+      # по умолчанию сайдкар ищет ConfigMap с дашбордами только в своём
+      # неймспейсе (monitoring), а panda-api со своим ConfigMap живёт в default
+      searchNamespace: ALL
+  # Loki ставится отдельным релизом (loki-stack) в свой namespace logging,
+  # прописываем его сюда, чтобы не тыкать мышкой в Connections -> Data sources.
+  # Jaeger (namespace tracing) добавлен тут же — чтобы можно было прыгать
+  # из лога прямо в трейс одной кнопкой (derivedFields ниже).
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      # uid намеренно НЕ переопределяем: Grafana уже создала этот datasource
+      # раньше с автосгенерированным uid, и файловый provisioning не умеет
+      # переименовывать uid существующей записи — ловили "data source not
+      # found" в цикле ресинка, пока не убрали эту строку.
+      url: http://loki.logging.svc.cluster.local:3100
+      access: proxy
+      jsonData:
+        derivedFields:
+          # вытаскиваем trace_id из JSON-тела лога и превращаем его в кликабельную
+          # кнопку "Trace: <id>", которая открывает нужный трейс прямо в Jaeger
+          - datasourceUid: jaeger
+            matcherRegex: "\"trace_id\": \"(\\w+)\""
+            name: TraceID
+            url: "$${__value.raw}"
+    - name: Jaeger
+      type: jaeger
+      uid: jaeger
+      url: http://jaeger.tracing.svc.cluster.local:16686
+      access: proxy

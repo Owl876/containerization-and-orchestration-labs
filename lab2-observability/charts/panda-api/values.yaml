@@ -1,0 +1,47 @@
+replicaCount: 2
+
+image:
+  repository: panda-api
+  tag: local
+  # образ собран внутри minikube командой `minikube image build`,
+  # поэтому pullPolicy: Never — иначе kubelet попробует тянуть его
+  # из публичного registry и упадёт с ImagePullBackOff.
+  pullPolicy: Never
+
+service:
+  type: ClusterIP
+  port: 8000
+
+env:
+  # DNS-имя Service (а не localhost!), чтобы /load реально
+  # распределял запросы между репликами пода, а не ходил сам в себя.
+  SELF_URL: "http://panda-api:8000"
+  # Jaeger (chart jaegertracing/jaeger, all-in-one) живёт в неймспейсе tracing
+  # и с версии 1.35+ сам умеет принимать OTLP напрямую, без отдельного коллектора.
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger.tracing.svc.cluster.local:4317"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 128Mi
+
+serviceMonitor:
+  # ServiceMonitor — это CRD Prometheus Operator'а, её ставит kube-prometheus-stack.
+  # Если включить это ДО установки стека, helm install/upgrade упадёт — CRD ещё нет.
+  enabled: true
+  interval: 15s
+
+grafanaDashboard:
+  # Требует, чтобы у Grafana (kube-prometheus-stack) сайдкар дашбордов смотрел
+  # не только в свой namespace monitoring, но и в default — см. searchNamespace: ALL
+  # в observability/kube-prometheus-stack-values.yaml.
+  enabled: true
+
+alerts:
+  # PrometheusRule подхватится автоматически — ruleSelectorNilUsesHelmValues: false
+  # в observability/kube-prometheus-stack-values.yaml снимает фильтр по лейблу release.
+  enabled: true
+
