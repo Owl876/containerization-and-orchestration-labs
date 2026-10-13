@@ -18,29 +18,25 @@
 
 Структура отчёта — по этим четырём столпам observability, плюс нулевая часть про сам сервис и стенд:
 
-- **Часть 0** — сервис `api` и как с нуля поднять под него кластер;
+- **Часть 0** — сервис `api` и как поднять под него кластер;
 - **Часть 1** — метрики: Prometheus + Grafana;
-- **Часть 2** — логи: Loki, поиск по ним прямо из Grafana;
-- **Часть 3** — трейсы: OpenTelemetry + Jaeger, плюс склейка логов и трейсов по `trace_id`;
-- **Часть 4** — алерты: Alertmanager + Karma, и бонусом — свой Telegram-бот со стикерами;
+- **Часть 2** — логи: Loki;
+- **Часть 3** — трейсы: OpenTelemetry + Jaeger;
+- **Часть 4** — алерты: Alertmanager + Karma, и Telegram-бот со стикерами;
 - **Грабли** — всё, что сломалось по пути, и как чинилось;
 - **Итоги** — что в сухом остатке.
 
-## Стенд
-
-- Инструмент кластера: minikube, драйвер `docker`
-- Версия Kubernetes: _TODO (см. `kubectl version -o json | jq -r .serverVersion.gitVersion`)_
-- Характеристики хоста: _TODO (CPU/RAM/диск — комп игровой, кластеру отдано `--cpus=6 --memory=12g --disk-size=30g`, см. Часть 0)_
-- Способ деплоя: Helm
 
 ## Часть 0 — Сервис `api`
 
+Сервис был честно навайбкожен
+
+<img src="report/memes/language.jpg" alt="Язык программирования" height="300">
+
 `api` — маленький FastAPI-сервис на пяти эндпоинтах (`/health`, `/fail`, `/slow`, `/load`, `/metrics`), специально сделанный, чтобы было что наблюдать: `/fail` стабильно падает, `/slow` тратит "энергию панды" и пишет вложенный спан, `/load` создаёт всплеск RPS по нескольким репликам сразу. Полное описание эндпоинтов, метрик и переменных окружения — в [api/README.md](api/README.md).
 
-- _TODO: как собирали образ, как загружали в кластер_
-
 <details>
-<summary>Установка инструментов (Docker, kubectl, minikube, Helm) — чисто подготовка стенда</summary>
+<summary>Установка инструментов (Docker, kubectl, minikube, Helm) и прочая подготовка стенда</summary>
 
 ### Docker
 Итак, при подготовке стенда не помешало бы установить докер (ну а вдруг пригодится)
@@ -168,19 +164,23 @@
 
 </details>
 
+<br>
+
+<img src="report/memes/front.png" alt="Деплой" height="300">
+
 ## Часть 1 — Метрики (Prometheus + Grafana)
 
-Для установки prometheus используем это:
+Для установки prometheus используем следующие команды:
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   -n monitoring --create-namespace \
-  -f observability/kube-prometheus-stack-values.yaml   # сам стек: Prometheus, Grafana, Alertmanager и далее по списку
-helm upgrade panda-api charts/panda-api                 # накатить ServiceMonitor, чтобы Prometheus увидел api
+  -f observability/kube-prometheus-stack-values.yaml
+helm upgrade panda-api charts/panda-api
 ```
 
-После установки открываем http://localhost:3000/ и пытаемся понять, что тут происходит. 5 минут отрицания и попыток самостоятельно разобраться, и вот я уже на ютубе, смотрю гайд какого-то школьника. Путем n-ого количества экспериментов и тыканья во все подряд, получился такой вот вариант дашборда:
+После установки открываем http://localhost:3000/ с графаной и пытаемся понять, что тут происходит. 5 минут отрицания и попыток самостоятельно разобраться, и вот я уже на ютубе, смотрю гайд какого-то школьника. Путем n-ого количества экспериментов и тыканья во все подряд, получился такой вот вариант дашборда:
 
 ![RED-дашборд с волной нагрузки и панда-гейджем](report/screenshots/3-grafana2.png)
 
@@ -229,7 +229,7 @@ helm install jaeger jaegertracing/jaeger \
   --set query.enabled=false
 ```
 
-Дальше сервису достаточно знать один адрес — `OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger.tracing.svc.cluster.local:4317`. Отдельный OTel Collector не понадобился: all-in-one сам умеет принимать OTLP напрямую.
+Дальше сервису достаточно знать один адрес — `OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger.tracing.svc.cluster.local:4317`. Отдельный OTel Collector не понадобился, так как all-in-one сам умеет принимать OTLP напрямую.
 
 `/slow` рисует вложенный спан `nap-time` на всю длину сна, `/fail` же рисует спан с красным статусом ERROR и записанным исключением. Работает ок, но смотреть на один спан внутри одного пода скучновато, поэтому мучаю `/load`.
 
@@ -249,7 +249,7 @@ helm install jaeger jaegertracing/jaeger \
 helm upgrade panda-api charts/panda-api
 ```
 
-Karma — это просто более приятный UI поверх Alertmanager (сам Alertmanager хоть и рабочий, но выглядит как аскетичный список). Ставится отдельным чартом и указывается на уже существующий Alertmanager из `kube-prometheus-stack`, без своего:
+Karma ставится отдельным чартом и указывается на уже существующий Alertmanager из `kube-prometheus-stack`:
 
 ```bash
 helm repo add karma https://zekker6.github.io/helm-charts/
@@ -257,19 +257,22 @@ helm install karma karma/karma -n monitoring \
   --set env.ALERTMANAGER_URI="http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093"
 ```
 
-| Алерт | Что ловит (PromQL) | Почему важно | Что делать дежурному |
-|---|---|---|---|
-| `PandaHighErrorRate` | `sum(rate(http_errors_total[5m])) / sum(rate(http_requests_total[5m])) > 0.1` | больше 10% ответов — 5xx, сервис реально деградирует | смотреть логи в Loki по `ERROR`, по `trace_id` из лога провалиться в Jaeger и найти, где всё падает |
-| `PandaSlowRequests` | `histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2` | p95 латенси выше 2с — сервис подтормаживает ещё до явных ошибок | проверить RED-дашборд на аномальную нагрузку (не кто-то ли долбит `/load`), посмотреть долгие спаны в Jaeger |
-| `PandaEnergyExhausted` | `min(panda_energy_level) < 15` | наша собственная бизнес-метрика: хотя бы одна реплика-панда почти без сил | обычно само пройдёт (регенерация 1/сек), если не восстанавливается — смотреть `panda_state.py` на баг |
+| Алерт | Что ловит (PromQL) | Значение |
+|---|---|---|
+| `PandaHighErrorRate` | `sum(rate(http_errors_total[5m])) / sum(rate(http_requests_total[5m])) > 0.1` | больше 10% ответов — 5xx |
+| `PandaSlowRequests` | `histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2` | p95 латенси выше 2с |
+| `PandaEnergyExhausted` | `min(panda_energy_level) < 15` | наша собственная бизнес-метрика, которая означает, что хотя бы одна реплика-панда почти без сил |
 
-Погоняли нагрузку (`/fail` и `/slow` залпом) и получили все три алерта живьём:
+Создал нагрузку с помощью скриптов и получил все три алерта:
+
+<img src="report/memes/load.jpg" alt="Повышенная нагрузка" height="450">
 
 ![Три алерта firing в Alertmanager](report/screenshots/8-alertmanager-firing.png)
 
 ![Те же три алерта в Karma — читать приятнее, чем в вебморде Alertmanager](report/screenshots/9-karma-firing.png)
 
-Мелкая забавная деталь: в шаблоне `PandaEnergyExhausted` значение энергии подставляется через `{{ $value | humanize }}`, и для чисел меньше единицы `humanize` вместо процентов выдаёт SI-приставки — получили сообщение "энергия 53.34m" (то есть 0.05334), что выглядит как опечатка, а на самом деле просто функция делает то, для чего не предназначена.
+
+Из проблем, замеченных слишком поздно, тот момент, что в шаблоне `PandaEnergyExhausted` значение энергии подставляется через `{{ $value | humanize }}`, и для чисел меньше единицы `humanize` вместо процентов выдаёт SI-приставки. В итоге вместо 0.05334 я полчал "энергия 53.34m". 
 
 ### Telegram-бот для алертов
 
