@@ -174,25 +174,22 @@ helm install loki grafana/loki-stack -n logging --create-namespace --set grafana
 
 Loki подключили к Grafana через `additionalDataSources` в values `kube-prometheus-stack`.
 
-Код пишет логи через обычный `logging.StreamHandler()`, а это по умолчанию stderr, не stdout. Переживать не о чем — Kubernetes всё равно собирает оба потока в один лог-файл пода, так что Promtail их видит одинаково (в лейблах даже честно видно `stream: stderr`).
+Код пишет логи через обычный `logging.StreamHandler()`, а это по умолчанию stderr, но Kubernetes всё равно собирает оба потока в один лог-файл пода, так что Promtail их видит одинаково.
 
 ![Ошибка /fail, найденная в Loki через Grafana Explore](report/screenshots/4-loki-fail.png)
 
-Запрос, которым нашли ошибку (Explore, datasource Loki, вкладка Code — привет из прошлой части, Builder тут такой же неудобный):
+Для проверки использовал этот запрос:
 ```logql
 {app="panda-api"} |= "simulated failure"
 ```
-Нашлась сразу, со всеми потрохами — `trace_id`, `level: ERROR`, человеческое сообщение. Заодно Grafana обиделась отдельной жёлтой плашкой на свою же гистограмму "log volume" над результатами — к самим логам это отношения не имеет, просто ещё один пример того самого сложного интерфейса.
 
-Раз уж метрики и логи теперь в одной Grafana — добавили панель логов (тип **Logs**, не Time series) прямо на дашборд `panda-api RED`, чтобы они были в прямом смысле в одном окне, а не просто в соседних вкладках:
+Ну и раз уж логи теперь в Grafana, то имеет смысл добавить панель логов прямо на дашборд, чтобы они были в одном окне:
 
 ![Дашборд panda-api RED с панелью Error logs внизу](report/screenshots/5-dashboard-with-logs.png)
 
-Тут поймали занятную деталь: дашборд у нас "provisioned" — пришёл из ConfigMap через сайдкар, а не накликан руками, поэтому Grafana считает его read-only и не даёт нажать обычный Save. Вместо этого предлагает скачать JSON — но уже в новом "schema v2" формате (Kubernetes-style, `apiVersion`/`kind`/`spec`), который совсем не похож на классический dashboard model и ConфigMap-провижининг его не понимает. Пришлось руками вытащить нужные поля (datasource, запрос, тип панели) из нового формата и прописать как пятую панель в старом — занудно, но работает, и дашборд по-прежнему версионируется в git, а не теряется при пересоздании пода.
-
 ## Часть 3 — Трейсы (OpenTelemetry + Jaeger)
 
-Jaeger ставим в all-in-one варианте — коллектор, UI и хранилище (in-memory, для лабы хватит) в одном поде:
+Jaeger ставим в all-in-one варианте — коллектор, UI и хранилище в одном поде:
 
 ```bash
 helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
@@ -208,19 +205,19 @@ helm install jaeger jaegertracing/jaeger \
 
 Дальше сервису достаточно знать один адрес — `OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger.tracing.svc.cluster.local:4317`. Отдельный OTel Collector не понадобился: all-in-one сам умеет принимать OTLP напрямую.
 
-`/slow` честно рисует вложенный спан `nap-time` на всю длину сна, `/fail` — спан с красным статусом ERROR и записанным исключением. Работает как надо, но смотреть на один спан внутри одного пода, если честно, не очень зрелищно — решили накопать что-то поинтереснее.
+`/slow` рисует вложенный спан `nap-time` на всю длину сна, `/fail` же рисует спан с красным статусом ERROR и записанным исключением. Работает ок, но смотреть на один спан внутри одного пода скучновато, поэтому мучаю `/load`.
 
-`/load` сам ходит не в `localhost`, а через `Service panda-api`, поэтому реальные запросы раскидываются между обеими репликами. В итоге получился один трейс на 254 спана глубиной 4, и в нём реально видно, что часть работы выполнил один под, а часть — другой (проверили, сверив `pod` в логах Loki по одному и тому же `trace_id`):
+`/load` ходит через `Service panda-api`, поэтому запросы раскидываются между обеими репликами. В итоге получился один трейс на 254 спана глубиной 4, и в нём видно, что часть работы выполнил один под, а часть — другой:
 
 ![Трейс GET /load на 254 спана, размазанный по двум подам](report/screenshots/7-jaeger-load-trace.png)
 
-И чтобы не бегать туда-сюда между Grafana и Jaeger, копируя `trace_id` руками, прикрутили Jaeger ещё и как datasource в Grafana, а на Loki настроили `derivedFields` — регулярка вытаскивает `trace_id` из JSON-тела лога и превращает его в кликабельную кнопку, которая сразу открывает нужный трейс:
+Так же сразу имеет смысл прикрутить Jaeger ещё и как datasource в Grafana, а на Loki настроить `derivedFields`. Эта регулярка вытаскивает `trace_id` из JSON-тела лога и превращает его в кликабельную кнопку, которая сразу открывает нужный трейс:
 
 ![Клик по TraceID в логе открывает трейс в Jaeger](report/screenshots/6-loki-jaeger-link.png)
 
 ## Часть 4 — Алерты (Alertmanager + Karma)
 
-Правила алертов (`PrometheusRule`) завели там же, где и `ServiceMonitor` с дашбордом — прямо в чарте `panda-api`, чтобы всё версионировалось вместе с сервисом, а не руками через UI:
+Правила алертов завел прямо в чарте `panda-api`, чтобы всё версионировалось вместе с сервисом:
 
 ```bash
 helm upgrade panda-api charts/panda-api
@@ -248,11 +245,9 @@ helm install karma karma/karma -n monitoring \
 
 Мелкая забавная деталь: в шаблоне `PandaEnergyExhausted` значение энергии подставляется через `{{ $value | humanize }}`, и для чисел меньше единицы `humanize` вместо процентов выдаёт SI-приставки — получили сообщение "энергия 53.34m" (то есть 0.05334), что выглядит как опечатка, а на самом деле просто функция делает то, для чего не предназначена.
 
-### Бонус: свой Telegram-бот вместо скучного email
+### Telegram-бот для алертов
 
-Встроенный `telegram_configs` у Alertmanager — это, конечно, мило, но мне захотелось странного: чтобы на нашу собственную бизнес-метрику `PandaEnergyExhausted` бот слал не сухой текст, а стикер уставшей панды. Загвоздка в том, что весь встроенный телеграм-ресивер Alertmanager умеет только `sendMessage`, а `sendSticker` — отдельный метод Bot API, которого там просто нет.
-
-Решили маршрутизировать алерты на два разных ресивера:
+Для отправки алертов в тг можно использовать встроенный `telegram_configs` у Alertmanager, но мне захотелось, чтобы на бизнес-метрику `PandaEnergyExhausted` бот слал анимированный стикер уставшей панды. Проблема в том, что весь встроенный телеграм-ресивер Alertmanager умеет слать только текстовые сообщения, а `sendSticker`, поэтому пришлось маршрутизировать алерты на два разных ресивера:
 
 ```yaml
 route:
@@ -265,17 +260,15 @@ route:
       receiver: telegram-text             # встроенный telegram_configs, просто текст
 ```
 
-`telegram-sticker-bridge` — это ещё один крошечный чарт и ещё один FastAPI, который слушает вебхук от Alertmanager (обычный JSON с массивом `alerts`) и на каждый `firing`-алерт дёргает `sendSticker` + `sendMessage` руками через `httpx`.
+`telegram-sticker-bridge` - это чарт и FastAPI, который слушает вебхук от Alertmanager и на каждый `firing`-алерт дёргает `sendSticker` + `sendMessage` через `httpx`.
 
-Самое интересное — где взять стикер без хостинга картинок. Bot API для `sendSticker` просит не урл, а `file_id` — постоянную ссылку на файл внутри самого Telegram, а не где-то снаружи. Достать его можно только так: отправить нужный стикер самому боту в личку, а потом вытащить его `file_id` из `getUpdates`:
+На этом этапе надо было как-то отправить стикер без хостинга картинок. Bot API для `sendSticker` просит постоянную ссылку на файл внутри самого Telegram. Чтобы его достать нужно отправить желаемый стикер самому боту в личку, а потом вытащить его `file_id` из `getUpdates`:
 
 ```bash
 curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates" | jq '.result[].message.sticker.file_id'
 ```
 
-Никакого imgur, никакого отдельного хранилища картинок — просто один раз кинул боту стикер и сохранил id.
-
-Токен бота, chat_id и file_id стикера лежат в Kubernetes Secret, созданном руками (не в values.yaml и тем более не в git):
+Токен бота, chat_id и file_id стикера лежат в Kubernetes Secret:
 
 ```bash
 kubectl create secret generic telegram-bridge-secrets -n monitoring \
@@ -284,13 +277,14 @@ kubectl create secret generic telegram-bridge-secrets -n monitoring \
   --from-literal=sticker-file-id=<FILE_ID>
 ```
 
-В итоге на самый "наш" алерт прилетает не строчка текста, а стикер панды плюс пояснение:
+В итоге получился такой чат с ботом:
 
 ![PandaEnergyExhausted долетает до Telegram вместе со стикером](report/screenshots/10-telegram-sticker.gif)
 
-*GIF: `PandaEnergyExhausted` долетает до Telegram вместе со стикером*
+И так же обновленная маршрутизация алертов в Alertmanager и Karma
 
 ![Маршрутизация алертов видна в Alertmanager по receiver'ам](report/screenshots/11-alertmanager-telegram-routing.png)
+*Маршрутизация алертов видна в Alertmanager по receiver'ам*
 
 ![То же самое в Karma — сразу видно, какой алерт ушёл в стикер-бота, а какой текстом](report/screenshots/12-karma-telegram-routing.png)
 
@@ -306,20 +300,3 @@ kubectl create secret generic telegram-bridge-secrets -n monitoring \
 ## Итоги
 
 - _TODO_
-
-## Приложение: как вставлять скриншоты/мемы в отчёт
-
-Файлы скриншотов класть в `report/screenshots/`, мемы — в `report/memes/`. Ссылка в markdown — относительный путь от README-lab.md:
-
-```markdown
-![Дашборд RED-метрик](report/screenshots/red-dashboard.png)
-
-![Когда панда увидела 500-ю ошибку](report/memes/panda-500.png)
-```
-
-Для скриншота с подписью (просто курсивом текст строкой ниже):
-
-```markdown
-![Алерт сработал](report/screenshots/alert-firing.png)
-*Алертманагер поймал высокий error rate после серии /fail*
-```
