@@ -1,9 +1,5 @@
 alertmanager:
   alertmanagerSpec:
-    # Secret создаётся вручную, НЕ из values.yaml (токен не должен попасть в git):
-    #   kubectl create secret generic telegram-bot-token -n monitoring \
-    #     --from-literal=token=<TOKEN>
-    # Alertmanager примонтирует его файлом в /etc/alertmanager/secrets/telegram-bot-token/token
     secrets:
       - telegram-bot-token
   config:
@@ -11,15 +7,14 @@ alertmanager:
       receiver: "null"
       routes:
         # Watchdog всегда firing (это его смысл — проверка, что пайплайн алертов жив),
-        # в телеграм такое слать каждый раз незачем
         - match:
             alertname: Watchdog
           receiver: "null"
-        # наша бизнес-метрика — через мостик, он же шлёт стикер панды
+        # наша бизнес-метрика (шлёт стикер панды)
         - match:
             alertname: PandaEnergyExhausted
           receiver: telegram-sticker-bridge
-        # остальные panda-api алерты — обычным текстом через встроенный telegram receiver
+        # остальные panda-api алерты текстом через встроенный telegram receiver
         - match_re:
             alertname: PandaHighErrorRate|PandaSlowRequests
           receiver: telegram-text
@@ -31,7 +26,7 @@ alertmanager:
             chat_id: 1001306095
             # дефолтный шаблон Alertmanager рендерит HTML-теги (<b>...</b>), а parse_mode
             # Markdown/MarkdownV2 на них спотыкается ("can't parse entities") — проще
-            # вообще отключить парсинг сущностей и слать голым текстом.
+            # вообще отключить парсинг сущностей и слать текстом.
             parse_mode: ""
             message: |-
               {{ range .Alerts }}[{{ .Status | toUpper }}] {{ .Labels.alertname }}
@@ -39,9 +34,6 @@ alertmanager:
               {{ .Annotations.description }}
               {{ end }}
             http_config:
-              # ISP блокирует api.telegram.org напрямую с хоста/кластера; на хосте есть
-              # VPN-клиент (happ) с локальным SOCKS5 на 127.0.0.1:10808, прокинутым
-              # через socat на 0.0.0.0:18080, чтобы до него дотянулся под в кластере.
               proxy_url: socks5://host.minikube.internal:18080
       - name: telegram-sticker-bridge
         webhook_configs:
@@ -86,8 +78,8 @@ grafana:
       type: loki
       # uid намеренно НЕ переопределяем: Grafana уже создала этот datasource
       # раньше с автосгенерированным uid, и файловый provisioning не умеет
-      # переименовывать uid существующей записи — ловили "data source not
-      # found" в цикле ресинка, пока не убрали эту строку.
+      # переименовывать uid существующей записи — ловил "data source not
+      # found" в цикле ресинка, пока не убрал эту строку.
       url: http://loki.logging.svc.cluster.local:3100
       access: proxy
       jsonData:
