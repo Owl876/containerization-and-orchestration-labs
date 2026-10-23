@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: panda-lab1-resources-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  panda-lab1-resources.json: |
+    {
+      "id": null,
+      "uid": "panda-lab1-resources",
+      "title": "PandaRecovery — ресурсы API",
+      "description": "Ресурсы pandarecovery-runc на Linux-хосте. Источник: cAdvisor → Prometheus.",
+      "tags": ["pandarecovery", "lab-1"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "editable": true,
+      "graphTooltip": 1,
+      "refresh": "15s",
+      "time": {"from": "now-30m", "to": "now"},
+      "templating": {"list": []},
+      "annotations": {"list": []},
+      "panels": [
+        {
+          "id": 1,
+          "title": "Память — рабочий набор",
+          "description": "Текущий рабочий набор памяти контейнера. Grafana переводит байты в удобные единицы; это не накопительный счётчик.",
+          "type": "timeseries",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+          "interval": "15s",
+          "fieldConfig": {
+            "defaults": {"unit": "bytes", "min": 0, "decimals": 2, "custom": {"lineWidth": 2, "fillOpacity": 10, "spanNulls": false}},
+            "overrides": []
+          },
+          "options": {
+            "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["lastNotNull"]},
+            "tooltip": {"mode": "single", "sort": "none"}
+          },
+          "targets": [
+            {
+              "refId": "A", "editorMode": "code", "range": true,
+              "expr": "container_memory_working_set_bytes{job=\"panda-host-cadvisor\",name=\"pandarecovery-runc\"}",
+              "legendFormat": "{{name}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "CPU — среднее потребление за 2 минуты",
+          "description": "Скорость роста CPU-времени: CPU-секунды за реальную секунду. Значение 0.5 означает половину одного ядра в среднем.",
+          "type": "timeseries",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+          "interval": "15s",
+          "fieldConfig": {
+            "defaults": {"unit": "suffix: cores", "min": 0, "decimals": 3, "custom": {"lineWidth": 2, "fillOpacity": 10, "spanNulls": false}},
+            "overrides": []
+          },
+          "options": {
+            "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["lastNotNull"]},
+            "tooltip": {"mode": "single", "sort": "none"}
+          },
+          "targets": [
+            {
+              "refId": "A", "editorMode": "code", "range": true,
+              "expr": "rate(container_cpu_usage_seconds_total{job=\"panda-host-cadvisor\",name=\"pandarecovery-runc\",cpu=\"total\"}[2m])",
+              "legendFormat": "{{name}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Throttling — периоды с ограничением за 2 минуты",
+          "description": "Прирост счётчика периодов, в которых исчерпывалась CPU-квота. Это число периодов, а не процент времени. increase экстраполирует прирост на окно, поэтому результат может быть дробным.",
+          "type": "timeseries",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"x": 0, "y": 8, "w": 24, "h": 8},
+          "interval": "15s",
+          "fieldConfig": {
+            "defaults": {"unit": "short", "min": 0, "decimals": 1, "custom": {"lineWidth": 2, "fillOpacity": 10, "spanNulls": false}},
+            "overrides": []
+          },
+          "options": {
+            "legend": {"displayMode": "list", "placement": "bottom", "calcs": ["lastNotNull"]},
+            "tooltip": {"mode": "single", "sort": "none"}
+          },
+          "targets": [
+            {
+              "refId": "A", "editorMode": "code", "range": true,
+              "expr": "increase(container_cpu_cfs_throttled_periods_total{job=\"panda-host-cadvisor\",name=\"pandarecovery-runc\"}[2m])",
+              "legendFormat": "{{name}}"
+            }
+          ]
+        }
+      ]
+    }
