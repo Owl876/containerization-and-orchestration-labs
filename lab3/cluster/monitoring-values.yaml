@@ -1,0 +1,27 @@
+# Overlay on the lab2 values, used only when restoring its stack on a new PC.
+alertmanager:
+  alertmanagerSpec:
+    secrets: []
+  config:
+    route:
+      receiver: "null"
+      routes: []
+    receivers:
+      - name: "null"
+grafana:
+  service:
+    type: NodePort
+    nodePort: 30300
+  additionalDataSources: []
+prometheus:
+  service:
+    type: NodePort
+    nodePort: 30090
+  prometheusSpec:
+    retention: 2d
+    resources:
+      requests:
+        cpu: 100m
+        memory: 400Mi
+      limits:
+        memory: 1500Mi

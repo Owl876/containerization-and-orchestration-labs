@@ -1,0 +1,37 @@
+2026-10-24T20:09:35+03:00
+client rate limiter Wait returned an error: context deadline exceeded - error from a previous attempt: EOF
+error: client rate limiter Wait returned an error: context deadline exceeded - error from a previous attempt: EOF
+API health: ok
+Worker health: ok
+{"id":34,"item":"control-plane-down-1792861781","quantity":1,"status":"pending","created_at":"2026-10-24T17:09:41.162993+00:00","processed_at":null,"processed_by":null}API health: ok
+Worker health: ok
+{"id":35,"item":"control-plane-down-1792861781","quantity":1,"status":"pending","created_at":"2026-10-24T17:09:43.249028+00:00","processed_at":null,"processed_by":null}API health: ok
+Worker health: ok
+{"id":36,"item":"control-plane-down-1792861781","quantity":1,"status":"pending","created_at":"2026-10-24T17:09:45.286757+00:00","processed_at":null,"processed_by":null}API health: ok
+Worker health: ok
+{"id":37,"item":"control-plane-down-1792861781","quantity":1,"status":"pending","created_at":"2026-10-24T17:09:47.327779+00:00","processed_at":null,"processed_by":null}API health: ok
+Worker health: ok
+{"id":38,"item":"control-plane-down-1792861781","quantity":1,"status":"pending","created_at":"2026-10-24T17:09:49.363859+00:00","processed_at":null,"processed_by":null}PASS: new orders written to PostgreSQL and processed during the outage.
+node/lab3-control-plane condition met
+node/lab3-worker condition met
+Error from server (InternalError): Internal error occurred: failed calling webhook "validate.kyverno.svc-fail": failed to call webhook: Post "https://kyverno-svc.kyverno.svc:443/validate/fail?timeout=5s": dial tcp 10.96.243.137:443: connect: connection refused
+Error from server (InternalError): Internal error occurred: failed calling webhook "validate.kyverno.svc-fail": failed to call webhook: Post "https://kyverno-svc.kyverno.svc:443/validate/fail?timeout=5s": dial tcp 10.96.243.137:443: connect: connection refused
+Error from server (InternalError): Internal error occurred: failed calling webhook "validate.kyverno.svc-fail": failed to call webhook: Post "https://kyverno-svc.kyverno.svc:443/validate/fail?timeout=5s": dial tcp 10.96.243.137:443: connect: connection refused
+Error from server (InternalError): Internal error occurred: failed calling webhook "validate.kyverno.svc-fail": failed to call webhook: Post "https://kyverno-svc.kyverno.svc:443/validate/fail?timeout=5s": dial tcp 10.96.243.137:443: connect: connection refused
+Error from server (InternalError): Internal error occurred: failed calling webhook "validate.kyverno.svc-fail": failed to call webhook: Post "https://kyverno-svc.kyverno.svc:443/validate/fail?timeout=5s": dial tcp 10.96.243.137:443: connect: connection refused
+Error from server (InternalError): Internal error occurred: failed calling webhook "validate.kyverno.svc-fail": failed to call webhook: Post "https://kyverno-svc.kyverno.svc:443/validate/fail?timeout=5s": dial tcp 10.96.243.137:443: connect: connection refused
+Error from server (InternalError): Internal error occurred: failed calling webhook "validate.kyverno.svc-fail": failed to call webhook: Post "https://kyverno-svc.kyverno.svc:443/validate/fail?timeout=5s": dial tcp 10.96.243.137:443: connect: connection refused
+Error from server (InternalError): Internal error occurred: failed calling webhook "validate.kyverno.svc-fail": failed to call webhook: Post "https://kyverno-svc.kyverno.svc:443/validate/fail?timeout=5s": dial tcp 10.96.243.137:443: connect: connection refused
+Error from server (InternalError): Internal error occurred: failed calling webhook "validate.kyverno.svc-fail": failed to call webhook: Post "https://kyverno-svc.kyverno.svc:443/validate/fail?timeout=5s": dial tcp 10.96.243.137:443: connect: connection refused
+Error from server (InternalError): Internal error occurred: failed calling webhook "validate.kyverno.svc-fail": failed to call webhook: Post "https://kyverno-svc.kyverno.svc:443/validate/fail?timeout=5s": dial tcp 10.96.243.137:443: connect: connection refused
+Error from server (InternalError): Internal error occurred: failed calling webhook "validate.kyverno.svc-fail": failed to call webhook: Post "https://kyverno-svc.kyverno.svc:443/validate/fail?timeout=5s": dial tcp 10.96.243.137:443: connect: connection refused
+deployment.apps/shop-api annotated
+NAME                           READY   STATUS    RESTARTS   AGE
+shop-api-5f5b49c6dd-6d2sg      1/1     Running   0          31m
+shop-api-5f5b49c6dd-d256t      1/1     Running   0          31m
+shop-api-5f5b49c6dd-vq2d8      1/1     Running   0          31m
+shop-db-1                      1/1     Running   0          37m
+shop-worker-85bfb59f55-d7z9g   1/1     Running   0          168m
+shop-worker-85bfb59f55-k5qhf   1/1     Running   0          168m
+2026-10-24T20:10:33+03:00
+PASS: apiserver restored, management works again.

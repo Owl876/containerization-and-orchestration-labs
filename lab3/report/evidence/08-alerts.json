@@ -1,0 +1,145 @@
+{
+  "status": "success",
+  "data": {
+    "alerts": [
+      {
+        "labels": {
+          "alertname": "CPUThrottlingHigh",
+          "container": "kindnet-cni",
+          "instance": "172.18.0.2:10250",
+          "namespace": "kube-system",
+          "pod": "kindnet-cj9jl",
+          "service": "kube-prometheus-stack-kubelet",
+          "severity": "info"
+        },
+        "annotations": {
+          "description": "81.7% throttling of CPU in namespace kube-system for container kindnet-cni in pod kindnet-cj9jl on cluster .",
+          "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/cputhrottlinghigh",
+          "summary": "Processes experience elevated CPU throttling."
+        },
+        "state": "firing",
+        "activeAt": "2026-10-24T14:01:47.019148828Z",
+        "value": "8.169811320754716e-01"
+      },
+      {
+        "labels": {
+          "alertname": "CPUThrottlingHigh",
+          "container": "kindnet-cni",
+          "instance": "172.18.0.3:10250",
+          "namespace": "kube-system",
+          "pod": "kindnet-ftxfb",
+          "service": "kube-prometheus-stack-kubelet",
+          "severity": "info"
+        },
+        "annotations": {
+          "description": "93.76% throttling of CPU in namespace kube-system for container kindnet-cni in pod kindnet-ftxfb on cluster .",
+          "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/cputhrottlinghigh",
+          "summary": "Processes experience elevated CPU throttling."
+        },
+        "state": "firing",
+        "activeAt": "2026-10-24T14:01:47.019148828Z",
+        "value": "9.375520399666945e-01"
+      },
+      {
+        "labels": {
+          "alertname": "NodeClockNotSynchronising",
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "172.18.0.3:9100",
+          "job": "node-exporter",
+          "namespace": "monitoring",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-vsqp5",
+          "service": "kube-prometheus-stack-prometheus-node-exporter",
+          "severity": "warning"
+        },
+        "annotations": {
+          "description": "Clock at 172.18.0.3:9100 is not synchronising. Ensure NTP is configured on this host.",
+          "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/node/nodeclocknotsynchronising",
+          "summary": "Clock not synchronising."
+        },
+        "state": "firing",
+        "activeAt": "2026-10-24T14:02:07.219855492Z",
+        "value": "0e+00"
+      },
+      {
+        "labels": {
+          "alertname": "NodeClockNotSynchronising",
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "172.18.0.2:9100",
+          "job": "node-exporter",
+          "namespace": "monitoring",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-n5l8m",
+          "service": "kube-prometheus-stack-prometheus-node-exporter",
+          "severity": "warning"
+        },
+        "annotations": {
+          "description": "Clock at 172.18.0.2:9100 is not synchronising. Ensure NTP is configured on this host.",
+          "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/node/nodeclocknotsynchronising",
+          "summary": "Clock not synchronising."
+        },
+        "state": "firing",
+        "activeAt": "2026-10-24T14:02:07.219855492Z",
+        "value": "0e+00"
+      },
+      {
+        "labels": {
+          "alertname": "TargetDown",
+          "job": "kube-proxy",
+          "namespace": "kube-system",
+          "service": "kube-prometheus-stack-kube-proxy",
+          "severity": "warning"
+        },
+        "annotations": {
+          "description": "100% of the kube-proxy/kube-prometheus-stack-kube-proxy targets in kube-system namespace are down.",
+          "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/general/targetdown",
+          "summary": "One or more targets are unreachable."
+        },
+        "state": "firing",
+        "activeAt": "2026-10-24T14:01:41.004333452Z",
+        "value": "1e+02"
+      },
+      {
+        "labels": {
+          "alertname": "Watchdog",
+          "severity": "none"
+        },
+        "annotations": {
+          "description": "This is an alert meant to ensure that the entire alerting pipeline is functional.\nThis alert is always firing, therefore it should always be firing in Alertmanager\nand always fire against a receiver. There are integrations with various notification\nmechanisms that send a notification when this alert is not firing. For example the\n\"DeadMansSnitch\" integration in PagerDuty.\n",
+          "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/general/watchdog",
+          "summary": "An alert that should always be firing to certify that Alertmanager is working properly."
+        },
+        "state": "firing",
+        "activeAt": "2026-10-24T14:01:41.004333452Z",
+        "value": "1e+00"
+      },
+      {
+        "labels": {
+          "alertname": "KubeProxyDown",
+          "severity": "critical"
+        },
+        "annotations": {
+          "description": "KubeProxy has disappeared from Prometheus target discovery.",
+          "runbook_url": "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubeproxydown",
+          "summary": "Target disappeared from Prometheus target discovery."
+        },
+        "state": "firing",
+        "activeAt": "2026-10-24T14:01:49.526229446Z",
+        "value": "1e+00"
+      },
+      {
+        "labels": {
+          "alertname": "ShopWorkersStalled",
+          "namespace": "shop",
+          "severity": "critical"
+        },
+        "annotations": {
+          "summary": "No worker has successfully polled PostgreSQL for over a minute"
+        },
+        "state": "firing",
+        "activeAt": "2026-10-24T14:21:21.793999887Z",
+        "value": "0e+00"
+      }
+    ]
+  }
+}

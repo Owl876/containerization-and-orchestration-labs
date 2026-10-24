@@ -1,0 +1,49 @@
+2026-10-24T18:52:07+03:00
+NAME                       ADMISSION   BACKGROUND   READY   AGE    MESSAGE
+disallow-host-namespaces   true        true         True    110m   Ready
+disallow-privileged        true        true         True    110m   Ready
+require-labels             true        true         True    110m   Ready
+require-resources          true        true         True    110m   Ready
+trusted-images             true        true         True    110m   Ready
+pod/valid created (server dry run)
+Testing exactly one violation: require-resources
+Error from server: error when creating "/home/egor/GitHub/containerization-and-orchestration-labs/lab3/policy-tests/require-resources.yaml": admission webhook "validate.kyverno.svc-fail" denied the request: 
+
+resource Pod/shop/require-resources was blocked due to the following policies 
+
+require-resources:
+  require-resources: 'validation error: CPU/memory requests and limits are required.
+    rule require-resources failed at path /spec/containers/0/resources/limits/'
+Testing exactly one violation: trusted-images
+Error from server: error when creating "/home/egor/GitHub/containerization-and-orchestration-labs/lab3/policy-tests/trusted-images.yaml": admission webhook "validate.kyverno.svc-fail" denied the request: 
+
+resource Pod/shop/trusted-images was blocked due to the following policies 
+
+trusted-images:
+  trusted-images: 'validation error: Use registry.local/shop or the approved CloudNativePG
+    repository. rule trusted-images failed at path /spec/containers/0/image/'
+Testing exactly one violation: require-labels
+Error from server: error when creating "/home/egor/GitHub/containerization-and-orchestration-labs/lab3/policy-tests/require-labels.yaml": admission webhook "validate.kyverno.svc-fail" denied the request: 
+
+resource Pod/shop/require-labels was blocked due to the following policies 
+
+require-labels:
+  require-labels: 'validation error: An app label is required. rule require-labels
+    failed at path /metadata/labels/'
+Testing exactly one violation: disallow-privileged
+Error from server: error when creating "/home/egor/GitHub/containerization-and-orchestration-labs/lab3/policy-tests/disallow-privileged.yaml": admission webhook "validate.kyverno.svc-fail" denied the request: 
+
+resource Pod/shop/disallow-privileged was blocked due to the following policies 
+
+disallow-privileged:
+  disallow-privileged: 'validation error: Privileged containers are forbidden. rule
+    disallow-privileged failed at path /spec/containers/0/securityContext/privileged/'
+Testing exactly one violation: disallow-host-namespaces
+Error from server: error when creating "/home/egor/GitHub/containerization-and-orchestration-labs/lab3/policy-tests/disallow-host-namespaces.yaml": admission webhook "validate.kyverno.svc-fail" denied the request: 
+
+resource Pod/shop/disallow-host-namespaces was blocked due to the following policies 
+
+disallow-host-namespaces:
+  disallow-host-namespaces: 'validation error: hostNetwork, hostPID and hostIPC are
+    forbidden. rule disallow-host-namespaces failed at path /spec/hostNetwork/'
+PASS: valid Pod accepted, all five invalid Pods rejected by admission.
