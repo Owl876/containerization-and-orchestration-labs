@@ -1,1005 +1,414 @@
 # Лаба 1 — Свой Docker
 
-Команда: **КуберПанды**.
+<table>
+<tr><td align="center">
 
-Цель работы — поэтапно собрать собственный механизм запуска изолированного процесса с помощью namespaces, cgroups и ограничения прав, затем сравнить его с Docker.
+<img src="report/story/0-first-service.png" width="480">
 
-Структура отчёта:
+<br>
 
-- **Часть 0** — подопытный сервис PandaRecovery;
-- **Часть 1** — запуск без изоляции;
-- **Часть 2** — namespaces;
-- **Часть 3** — cgroups: память, CPU и количество задач;
-- **Часть 4** — capabilities и seccomp;
-- **Часть 5** — свой Docker и сравнение с `docker run`;
-- **Часть 6** — образы, слои и тома;
-- **Часть 7** — дополнительная изоляция с gVisor;
-- **Часть 8** — мониторинг и выбор метрик для алертов.
+*После шторма контейнеровоз сел на мель. Часть груза сместилась, а балластная система начала сбоить. Чтобы выровнять судно, нужно понять, какие контейнеры переместить и в каком порядке. Три панды решают разработать PandaRecovery — систему, которая поможет рассчитать такой план по данным о грузе и состоянии корабля.*
+
+*У команды остался рабочий Linux-сервер, но на нём уже работают другие корабельные системы. Прежде чем запускать расчёты, нужно убедиться, что новый сервис не займёт всю память и не помешает остальным. Для проверки панды начнут с небольшого тестового API, который нагружает процессор и память.*
+
+</td></tr>
+</table>
+
+Структура:
+
+- [0. Тестовый сервис](#часть-0--сервис-pandarecovery)
+- [1. Запуск без изоляции](#часть-1--запуск-без-изоляции)
+- [2. Namespaces](#часть-2--namespaces)
+- [3. Cgroups: память, CPU и задачи](#часть-3--cgroups)
+- [4. Capabilities и seccomp](#часть-4--capabilities-и-seccomp)
+- [5. Свой Docker](#часть-5--свой-docker)
+- [6. Образы и данные](#часть-6--образы-и-данные)
+- [7. gVisor](#часть-7--gvisor)
+- [8. Мониторинг](#часть-8--мониторинг)
 
 ## Часть 0 — Сервис PandaRecovery
 
-Язык сервиса: **Go**, только стандартная библиотека.
+Для опытов сделали небольшой API на Go (код в [api/main.go](api/main.go)). До расчётов груза он пока не дорос, зато умеет специально нагружать сервер. Этого достаточно, чтобы проверить изоляцию и лимиты.
 
-По сюжету это первый диагностический сервис на корабельном Linux-сервере.
-Пока он предоставляет тестовые маршруты для экспериментов с ресурсами;
-взаимодействие с датчиками и контроллерами ещё не реализовано.
-
-| Маршрут | Поведение |
+| Запрос | Что делает |
 | --- | --- |
 | `GET /health` | Возвращает `ok`. |
-| `GET /eat?mb=N` | Выделяет и заполняет N МиБ памяти, удерживает её до завершения процесса. Повторные запросы добавляют память. |
-| `GET /burn` | Запускает один фоновый CPU worker с бесконечным циклом. Повторные запросы не создают дополнительные worker. |
+| `GET /eat?mb=N` | Выделяет и заполняет N MiB памяти, а потом удерживает её. Повторный запрос добавляет ещё память. |
+| `GET /burn` | Запускает одну фоновую задачу для нагрузки CPU. Повторные запросы ничего не меняют. |
 
-Сборка из корня репозитория:
+Сначала собрали и запустили API как обычную программу на `:8080`. Нагрузка и выделенная память сохраняются до остановки процесса, поэтому между опытами сервис нужно перезапускать.
 
-```bash
+~~~bash
 cd lab1-containerization/api
 go build -o api .
-```
-
-Запуск и проверка:
-
-```bash
 ./api
-```
-
-В другом терминале:
-
-```bash
-curl http://localhost:8080/health
-```
-
-Адрес по умолчанию — `:8080`; его можно изменить переменной `API_ADDR`.
-Нагрузка `/burn` и выделенная через `/eat` память сохраняются до остановки
-процесса (`Ctrl+C`). Эти маршруты нужны для последующих проверок лимитов.
+~~~
 
 ## Часть 1 — Запуск без изоляции
 
-Сервис запущен командой `./api`, без добавления собственной изоляции.
-На хосте выполнена команда:
+<table>
+<tr><td align="center">
 
-```bash
+<img src="report/story/1-shifted-cargo-diagram.png" width="800">
+
+<br>
+
+*Расчёт перемещения контейнеров может занять много CPU и памяти. Проверим на тестовом API, как ограничить такую нагрузку. Начнём с обычного запуска — он нужен для сравнения.*
+
+</td></tr>
+</table>
+
+В браузере открыли `http://localhost:8080/health` и получили `ok`.
+
+<a href="report/screenshots/02-api-health.png"><img src="report/screenshots/02-api-health.png" width="420"></a>
+
+В другом терминале посмотрели процесс:
+
+~~~bash
 ps -C api -o pid,ppid,user,uid,%cpu,rss,args
-```
+~~~
 
-Полученный результат:
+В нашем запуске API получил PID 66474 и работал от пользователя с UID 1000. В колонке RSS видим 7872 KiB, то есть около 7,7 MiB оперативной памяти. Пока это обычный процесс без нашей дополнительной изоляции.
 
-```text
-    PID    PPID USER       UID %CPU   RSS COMMAND
-  66474   29205 vladisl+  1000  0.0  7872 ./api
-```
+<details>
+<summary>Процесс на хосте</summary>
 
-В этом запуске PID сервиса на хосте — `66474`, родительский PID — `29205`.
-Процесс работает с UID `1000` пользователя `vladislav`; поле `USER`
-сокращено до `vladisl+` из-за ширины столбца. RSS в момент проверки —
-7872 КиБ (около 7,7 МиБ), средняя загрузка CPU — 0,0%.
-После перезапуска PID может измениться.
+<a href="report/screenshots/03-api-process.png"><img src="report/screenshots/03-api-process.png" width="800"></a>
 
-В браузере открыт `http://localhost:8080/health`, получен ответ `ok`.
+</details>
 
-![Ответ /health при запуске сервиса напрямую](screenshots/02-api-health.png)
+## Часть 2 — Namespaces
 
-## Часть 2 — Изоляция через namespaces
+Следующим шагом отделили окружение API от остальной системы с помощью namespaces. Это позволяет дать ему свой список процессов, сетевые настройки и имя хоста. Например, смена hostname внутри не изменит имя самого сервера.
 
-Из корня репозитория, без `sudo`, выполнен запуск:
+Через `unshare` создали шесть namespaces: `--user`, `--pid`, `--mount`, `--net`, `--uts` и `--ipc`. Для запуска API использовали такую команду:
 
-```bash
+~~~bash
 unshare --user --map-root-user \
   --pid --fork \
   --mount --mount-proc \
   --net --uts --ipc \
   sh -c 'hostname pandarecovery && exec ./lab1-containerization/api/api'
-```
+~~~
 
-| Namespace | Что изолирует |
-| --- | --- |
-| PID | Нумерацию и видимость процессов. Первый процесс внутри получает PID 1. |
-| Mount | Таблицу точек монтирования. `--mount-proc` монтирует `/proc` для нового PID namespace. Сам по себе mount namespace не скрывает файлы хоста. |
-| Network | Сетевые интерфейсы, маршруты и сетевой стек, включая порты. |
-| UTS | Имя хоста и NIS domain name. |
-| IPC | System V IPC и очереди сообщений POSIX. |
-| User | Отображение UID/GID и область действия capabilities. Внутренний UID 0 отображён в пользователя, запустившего `unshare`. |
+Остальные флаги помогают настроить запуск. `--map-root-user` отображает текущего пользователя в root внутри, `--fork` запускает дочерний процесс в новом PID namespace, а `--mount-proc` монтирует `/proc` для него. Дополнительных namespaces они не создают.
 
-При предварительной проверке в интерактивном `sh` наблюдались:
+Команду запускали без sudo. Внутри мы получили root, но на хосте остались обычным пользователем.
 
-```text
-PID оболочки: 1
-uid=0(root) gid=0(root)
-hostname: pandarecovery
+Сначала с этими флагами запустили оболочку и посмотрели, что ей видно. Она получила PID 1, а из сетевых интерфейсов остался только выключенный `lo`.
 
-    PID    PPID USER     COMMAND
-      1       0 root     sh
-      5       1 root     ps -eo pid,ppid,user,args
+<details>
+<summary>Проверка процессов, hostname, UID и сети внутри</summary>
 
-1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN mode DEFAULT group default qlen 1000
-    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-```
+<a href="report/screenshots/04-namespaces-check.png"><img src="report/screenshots/04-namespaces-check.png" width="850"></a>
 
-Оболочка видела только процессы своего PID namespace. В новой сети
-был только выключенный loopback-интерфейс; интерфейсов хоста не было.
-При `exec` интерактивная оболочка завершилась с ошибкой
-`Cannot set tty process group (No such process)`. Повторный запуск через
-неинтерактивный `sh -c`, приведённый выше, прошёл успешно.
+</details>
 
-Стартовое сообщение API при успешном запуске:
+Затем запустили API и получили `pid=1` уже у него. Вверху скриншота осталась ошибка оболочки от предыдущей попытки. Ниже виден успешный запуск сервиса на `:8080`.
 
-```text
-2026/10/07 00:56:06 PandaRecovery lab API: pid=1 address=:8080
-```
+<a href="report/screenshots/05-namespaces-api.png"><img src="report/screenshots/05-namespaces-api.png" width="800"></a>
 
-Проверка в другом терминале на хосте:
+Снаружи это тот же процесс, но с PID 26189 и UID 1000. Имя хоста тоже не поменялось, осталось `laptop`.
 
-```bash
-ps -C api -o pid,ppid,user,uid,args
-hostname
-```
+<a href="report/screenshots/06-namespaces-host.png"><img src="report/screenshots/06-namespaces-host.png" width="800"></a>
 
-```text
-    PID    PPID USER       UID COMMAND
-  26189   26188 vladisl+  1000 ./lab-1/api/api
-laptop
-```
+Проверить HTTP как раньше уже не получится. У API теперь своя сеть, и `localhost` хоста к нему не ведёт. Поэтому вошли в network namespace через `nsenter`, включили loopback и выполнили запрос оттуда:
 
-Таким образом, один процесс имеет PID 1 внутри и PID 26189 на хосте.
-Root внутри user namespace не стал root на хосте: снаружи UID равен 1000.
-Изменение имени хоста внутри UTS namespace не изменило имя `laptop` снаружи.
-Для проверки сервиса из его сети на хосте выполнено:
-
-```bash
+~~~bash
 sudo nsenter --target 26189 --user --net \
   sh -c 'ip link set lo up && curl --noproxy "*" http://127.0.0.1:8080/health'
-```
+~~~
 
-Получен ответ `ok`. Команда вошла в user и network namespaces API,
-включила внутренний loopback и выполнила запрос внутри изолированной сети.
-Сеть хоста с этой сетью не соединялась; UID самого API на хосте остался 1000.
+Получили `ok`. Для проверки зашли в сеть API, сам сервис перезапускать не пришлось.
 
-## Часть 3 — Ограничение ресурсов через cgroups
+Окружение отделили, но файлы хоста пока доступны в пределах прав процесса. Лимитов памяти и CPU тоже нет. С ними разобрались дальше.
 
-### Память и OOM
+## Часть 3 — Cgroups
 
-На хосте обнаружена файловая система `cgroup2fs`. Доступны контроллеры
-`cpuset cpu io memory hugetlb pids rdma misc dmem`; в корневом
-`cgroup.subtree_control` включены `cpu memory pids`.
-До переноса API находился в группе VS Code:
+Для ограничения ресурсов использовали cgroups. На стенде уже работает cgroup v2 с контроллерами `cpu`, `memory` и `pids`.
 
-```text
-0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-com.microsoft.VSCode-8516.scope
-```
+### Ограничение памяти и CPU
 
-Для API создана отдельная группа с лимитом памяти 32 МиБ и запретом swap:
+Создали группу `pandarecovery-lab1`, задали ей 32 MiB памяти без swap и добавили туда API с PID 26189:
 
-```bash
+~~~bash
 sudo mkdir /sys/fs/cgroup/pandarecovery-lab1
 sudo sh -c '
   echo 33554432 > /sys/fs/cgroup/pandarecovery-lab1/memory.max
   echo 0 > /sys/fs/cgroup/pandarecovery-lab1/memory.swap.max
   echo 26189 > /sys/fs/cgroup/pandarecovery-lab1/cgroup.procs
 '
-```
+~~~
 
-После переноса `/proc/26189/cgroup` показал `0::/pandarecovery-lab1`,
-а `memory.max` — `33554432`. Исходные счётчики `memory.events` были нулевыми.
+Затем через сеть API запросили `/eat?mb=64` (больше лимита всей группы). Запрос оборвался с `Empty reply from server`, API исчез из списка процессов. В `memory.events` счётчики `oom` и `oom_kill` выросли с 0 до 1.
 
-Из network namespace сервиса запрошено выделение 64 МиБ:
+<a href="report/screenshots/08-memory-oom.png"><img src="report/screenshots/08-memory-oom.png" width="760"></a>
 
-```bash
-sudo nsenter --target 26189 --user --net \
-  curl --noproxy "*" --max-time 10 'http://127.0.0.1:8080/eat?mb=64'
-```
+Памяти в пределах лимита не хватило, и ядро завершило процесс. По одной ошибке curl причину не понять, поэтому проверили `memory.events`. В Kubernetes такое завершение контейнера обычно видно как `OOMKilled`.
 
-Запрос завершился ошибкой `curl: (52) Empty reply from server`.
-После запроса `memory.events` содержал:
+После OOM пришлось перезапустить API. У него появился новый PID 43347, который снова записали в `cgroup.procs`. Затем задали 50 мс CPU-времени на каждые 100 мс:
 
-```text
-low 0
-high 0
-max 49
-oom 1
-oom_kill 1
-oom_group_kill 0
-sock_throttled 0
-```
-
-`cgroup.procs` оказался пустым, а `ps -C api -o pid,uid,args`
-вывел только заголовок и завершился с кодом 1: процессов API не осталось.
-Рост `oom` и `oom_kill` с 0 до 1 подтверждает OOM и завершение процесса
-ядром при невозможности выделить память в пределах лимита.
-`max 49` — число событий на границе лимита, а не размер памяти и не число
-завершённых процессов. `oom_group_kill 0` означает, что отдельного события
-группового OOM-завершения не было.
-
-### CPU и throttling
-
-Для той же группы задана CPU-квота 50 мс на период 100 мс:
-
-```bash
+~~~bash
 sudo sh -c 'echo "50000 100000" > /sys/fs/cgroup/pandarecovery-lab1/cpu.max'
-```
+~~~
 
-Это бюджет процессорного времени, соответствующий половине одного
-логического CPU при постоянной нагрузке, а не привязка к определённому ядру.
+Это примерно половина одного CPU при постоянной нагрузке. После запроса `/burn` сравнили `cpu.stat`:
 
-После предыдущего OOM API запущен заново из корня репозитория:
+| Счётчик | До нагрузки | После |
+| --- | ---: | ---: |
+| `nr_periods` | 2 | 123 |
+| `nr_throttled` | 0 | 121 |
+| `throttled_usec` | 0 | 6 419 813 |
 
-```bash
-unshare --user --map-root-user \
-  --pid --fork \
-  --mount --mount-proc \
-  --net --uts --ipc \
-  sh -c 'hostname pandarecovery && ip link set lo up && exec ./lab1-containerization/api/api'
-```
+API продолжил работать, но теперь получал только половину процессорного времени одного ядра. Когда квота заканчивалась, ему приходилось ждать. Так мы ограничили нагрузку на сервер, но выполнение задач стало занимать больше времени.
 
-Внутри сервис сообщил PID 1, на хосте получил PID 43347 и UID 1000.
-Новый процесс перенесён в группу отдельно:
+<details>
+<summary>Нагрузка /burn и статистика throttling</summary>
 
-```bash
-sudo sh -c 'echo 43347 > /sys/fs/cgroup/pandarecovery-lab1/cgroup.procs'
-```
+<a href="report/screenshots/09-cpu-limit.png"><img src="report/screenshots/09-cpu-limit.png" width="760"></a>
 
-`/proc/43347/cgroup` подтвердил `0::/pandarecovery-lab1`.
-До запуска нагрузки `cpu.stat` содержал:
+</details>
 
-```text
-usage_usec 52299
-user_usec 27155
-system_usec 25143
-nice_usec 0
-core_sched.force_idle_usec 0
-nr_periods 2
-nr_throttled 0
-throttled_usec 0
-nr_bursts 0
-burst_usec 0
-```
+### Ограничение числа процессов и потоков
 
-Нагрузка запущена из сети сервиса:
+Ограничили группу до 32 процессов и потоков суммарно (`pids.max=32`). Затем на 10 секунд запустили `stress-ng`, который пытался создавать новые процессы.
 
-```bash
-sudo nsenter --target 43347 --user --net \
-  curl --noproxy "*" http://127.0.0.1:8080/burn
-```
+Когда группа заполнялась, ядро отказывало в создании новых процессов. Лимит сработал 4714 раз, а API продолжил работать. То есть программа не смогла наплодить процессы сверх ограничения, но уже запущенные процессы никто не убивал.
 
-Ответ: `one CPU worker running until process exit`.
-После запуска нагрузки `cpu.stat` показал:
+<details>
+<summary>Команда и результат проверки</summary>
 
-```text
-usage_usec 6102220
-user_usec 6054289
-system_usec 47931
-nice_usec 0
-core_sched.force_idle_usec 0
-nr_periods 123
-nr_throttled 121
-throttled_usec 6419813
-nr_bursts 0
-burst_usec 0
-```
+Память подняли до 128 MiB, чтобы не получить OOM раньше проверки числа процессов. Оболочку добавили в ту же cgroup, что и API. Запущенный из неё `stress-ng` наследует эту группу.
 
-Рост `nr_throttled` с 0 до 121 и `throttled_usec` с 0 до 6419813
-(около 6,42 с) подтверждает ограничение выполнения после исчерпания квоты.
-CPU-время группы выросло примерно на 6,05 с.
-В отличие от проверки памяти, исчерпание CPU-квоты приостанавливает
-выполнение до пополнения бюджета, а не завершает процесс.
-
-### Количество задач
-
-Для проверки установлен `stress-ng` версии 0.20.01.
-До настройки лимита группа содержала 6 задач API, `pids.max` был `max`,
-а `pids.events` показывал `max 0`.
-Контроллер pids учитывает как процессы, так и потоки.
-
-Для эксперимента лимит памяти увеличен с 32 до 128 МиБ, чтобы проверить
-именно ограничение количества задач, без нового OOM. CPU-квота сохранена.
-Установлен общий лимит 32 задачи:
-
-```bash
-sudo sh -eu -c '
-  echo 134217728 > /sys/fs/cgroup/pandarecovery-lab1/memory.max
-  echo 32 > /sys/fs/cgroup/pandarecovery-lab1/pids.max
-'
-```
-
-Проведён ограниченный по времени fork-тест внутри той же cgroup:
-
-```bash
+~~~bash
 sudo sh -eu -c '
   echo $$ > /sys/fs/cgroup/pandarecovery-lab1/cgroup.procs
   exec runuser -u vladislav -- stress-ng \
     --fork 1 --fork-max 64 \
     --timeout 10s --metrics-brief --no-oom-adjust
 '
-```
+~~~
 
-Оболочка перенесла себя в группу, а её потомки унаследовали членство.
-`runuser` запустил тест от пользователя `vladislav`. Один fork-worker
-пытался создавать до 64 дочерних процессов за итерацию.
-`stress-ng` сообщил 2645 bogo ops, `passed: 1: fork (1)`, `failed: 0`
-и завершился за 10,00 с. Bogo ops не являются числом одновременно
-существующих процессов; сообщение `passed` само по себе не доказывает
-срабатывание лимита.
+В `pids.events` счётчик `max` вырос с 0 до 4714. После теста осталось 6 задач API, счётчики OOM не изменились.
 
-После теста:
+<a href="report/screenshots/10-pids-limit.png"><img src="report/screenshots/10-pids-limit.png" width="760"></a>
 
-```text
-pids.current:
-6
+</details>
 
-pids.events:
-max 4714
+В этих опытах получили три разных результата. Памяти не хватило и API завершился. При лимите CPU он продолжал работать, но с паузами. А лимит задач просто не давал создавать новые процессы.
 
-memory.events:
-low 0
-high 0
-max 49
-oom 1
-oom_kill 1
-oom_group_kill 0
-sock_throttled 0
-```
+## Часть 4 — Capabilities и seccomp
 
-Рост `max` в `pids.events` с 0 до 4714 подтверждает отказы создания задач
-из-за лимита pids. После завершения теста осталось 6 задач API.
-Счётчики памяти не изменились: нового OOM не было.
-Достижение `pids.max` запрещает создание новых задач, но само по себе
-не завершает уже существующие процессы.
-
-## Часть 4 — Ограничение прав
+С ресурсами разобрались. Но лимиты сами по себе не запрещают процессу менять настройки системы. Поэтому дальше проверили, как убрать лишние права и запретить отдельные системные вызовы.
 
 ### Проверка capabilities
 
-Исходные capabilities основного потока API (PID 43347 на хосте)
-прочитаны через `sudo grep '^Cap' /proc/43347/status`:
+Для проверки попробовали изменить MTU у `lo`, то есть максимальный размер пакета. С `CAP_NET_ADMIN` всё работало. Затем убрали это разрешение через `capsh` и повторили команду:
 
-```text
-CapInh: 0000000000000000
-CapPrm: 000001ffffffffff
-CapEff: 000001ffffffffff
-CapBnd: 000001ffffffffff
-CapAmb: 0000000000000000
-```
-
-Внутри user и network namespaces API проверена операция,
-требующая `CAP_NET_ADMIN`: изменение MTU loopback-интерфейса.
-С capability операция прошла успешно; исходный MTU затем восстановлен:
-
-```bash
-sudo nsenter --target 43347 --user --net sh -eu -c '
-  ip link set lo mtu 60000
-  ip link show lo
-  ip link set lo mtu 65536
-'
-```
-
-В выводе наблюдался `lo` со значением `mtu 60000`.
-В отдельной проверочной оболочке capability исключена из bounding set
-перед запуском новой программы:
-
-```bash
+~~~bash
 sudo nsenter --target 43347 --user --net \
-  capsh --drop=cap_net_admin -- -c '
-    id
-    capsh --print
-    ip link set lo mtu 60000
-  '
-```
+  capsh --drop=cap_net_admin -- -c 'ip link set lo mtu 60000'
+~~~
 
-Результат:
+Получили `RTNETLINK answers: Operation not permitted`, хотя UID внутри остался 0. Оказалось, быть root недостаточно. Для этой операции нужна `CAP_NET_ADMIN`.
 
-```text
-uid=0(root) gid=0(root) groups=0(root)
-Current: =ep cap_net_admin-ep
-Current IAB: !cap_net_admin
-RTNETLINK answers: Operation not permitted
-```
+Эта проверка ограничивала только новую оболочку. Затем отдельно перезапустили сам API через `capsh --drop=all`. Hostname и loopback настроили до сброса прав. Все пять полей `Cap*` у API стали нулевыми, а `/health` продолжил возвращать `ok`.
 
-Команда завершилась с кодом 2. UID 0 сохранился, но операция запрещена:
-для управления сетевыми настройками требуется соответствующая capability.
-Проверка ограничила новую оболочку; capabilities работающего API
-этими командами не изменялись.
+<a href="report/screenshots/11-capabilities.png"><img src="report/screenshots/11-capabilities.png" width="960"></a>
 
-### Запуск API без capabilities
+### Запрет системного вызова через seccomp
 
-Предыдущий API остановлен командой `kill -TERM 43347`.
-Новый запуск выполнен из корня репозитория:
+Для seccomp написали небольшую [обёртку](seccomp-run.c). Она читает список запрещённых вызовов из [seccomp-deny.txt](seccomp-deny.txt), включает фильтр и запускает программу с ним.
 
-```bash
-unshare --user --map-root-user \
-  --pid --fork \
-  --mount --mount-proc \
-  --net --uts --ipc \
-  sh -eu -c '
-    hostname pandarecovery
-    ip link set lo up
-    exec capsh --drop=all -- -c "exec ./lab1-containerization/api/api"
-  '
-```
+Для опыта запретили только `uname`, который возвращает сведения о системе. Проверили его через Python сначала без фильтра, потом с ним. Остальные вызовы оставили разрешёнными, чтобы было проще увидеть результат.
 
-Окружение настроено до сброса capabilities. После исключения всех
-capabilities из bounding set через `capsh --drop=all` и запуска следующей
-программы API работает без capabilities. На хосте новый PID — 68024,
-UID — 1000. Проверка `sudo grep '^Cap' /proc/68024/status` показала:
+<details>
+<summary>Сборка обёртки и проверка запрета</summary>
 
-```text
-CapInh: 0000000000000000
-CapPrm: 0000000000000000
-CapEff: 0000000000000000
-CapBnd: 0000000000000000
-CapAmb: 0000000000000000
-```
+Нужны GCC и библиотека разработки libseccomp.
 
-Новый процесс отдельно перенесён в существующую cgroup:
+~~~bash
+gcc -Wall -Wextra -Werror -O2 \
+  lab1-containerization/seccomp-run.c \
+  -o lab1-containerization/seccomp-run -lseccomp
 
-```bash
-sudo sh -c 'echo 68024 > /sys/fs/cgroup/pandarecovery-lab1/cgroup.procs'
-cat /proc/68024/cgroup
-```
-
-Получено `0::/pandarecovery-lab1`.
-Запрос из сети API:
-
-```bash
-sudo nsenter --target 68024 --user --net \
-  curl --noproxy "*" --max-time 5 http://127.0.0.1:8080/health
-```
-
-Ответ — `ok`: для текущей функциональности API capabilities не требуются.
-Проверочный процесс `nsenter` не изменяет наборы capabilities API.
-
-### Seccomp
-
-Установлен пакет `libseccomp-dev`; `pkg-config --modversion libseccomp`
-показал версию 2.6.0.
-
-Добавлен launcher `seccomp-run.c` и учебный профиль `seccomp-deny.txt`.
-Формат профиля — имена запрещённых системных вызовов, разделённые пробелами
-или переводами строк, без комментариев. Сейчас в нём только `uname`.
-Это формат нашего launcher, а не JSON-профиль Docker.
-
-Сборка из корня репозитория:
-
-```bash
-gcc -Wall -Wextra -Werror -O2 lab1-containerization/seccomp-run.c -o lab1-containerization/seccomp-run -lseccomp
-```
-
-Launcher разрешает остальные вызовы (`SCMP_ACT_ALLOW`), а для перечисленных
-возвращает `EPERM`. Он устанавливает `no_new_privs`, загружает фильтр в ядро
-и заменяется указанной программой через `execvp`.
-Фильтр и `no_new_privs` сохраняются при `exec` и наследуются потомками.
-Запрет `uname` выбран для наблюдаемого эксперимента; этот профиль не является
-полным набором ограничений для защиты сервиса.
-
-После сборки выполнено сравнение одного и того же вызова без фильтра
-и под фильтром:
-
-```bash
 python3 -c 'import os; print(os.uname())'
 ./lab1-containerization/seccomp-run lab1-containerization/seccomp-deny.txt \
   python3 -c 'import os; print(os.uname())'
-```
+~~~
 
-Обычный запуск вернул сведения о системе:
+</details>
 
-```text
-posix.uname_result(sysname='Linux', nodename='laptop', release='7.0.0-34-generic', version='#34-UbuntuSMP PREEMPT_DYNAMIC Wed Sep  2 14:29:37 UTC 2026', machine='x86_64')
-```
+С фильтром получили `Operation not permitted`. Так и должно быть: seccomp запретил вызов `uname`, поэтому Python не смог получить сведения о системе.
 
-Запуск под фильтром завершился с кодом 1 и ошибкой:
+<a href="report/screenshots/12-seccomp-denied.png"><img src="report/screenshots/12-seccomp-denied.png" width="850"></a>
 
-```text
-PermissionError: [Errno 1] Operation not permitted
-```
+Потом запустили под тем же фильтром API. Он продолжил отвечать `ok`. В `/proc` проверили, что capabilities обнулены, а seccomp включён (`Seccomp: 2`). Обёртка также выставляет `no_new_privs`, чтобы запуск другой программы через `exec` не позволил повысить привилегии.
 
-Это подтверждает отказ системного вызова `uname` под установленным фильтром.
-API перезапущен из корня репозитория с тем же профилем и без capabilities:
+<details>
+<summary>Проверка API с фильтром</summary>
 
-```bash
-unshare --user --map-root-user \
-  --pid --fork \
-  --mount --mount-proc \
-  --net --uts --ipc \
-  sh -eu -c '
-    hostname pandarecovery
-    ip link set lo up
-    exec capsh --drop=all -- -c "
-      exec ./lab1-containerization/seccomp-run ./lab1-containerization/seccomp-deny.txt ./lab1-containerization/api/api
-    "
-  '
-```
+<a href="report/screenshots/13-seccomp-api.png"><img src="report/screenshots/13-seccomp-api.png" width="960"></a>
 
-На хосте API получил PID 79622 и UID 1000.
-Проверка `sudo grep -E '^(Cap|NoNewPrivs|Seccomp)' /proc/79622/status`
-показала:
-
-```text
-CapInh: 0000000000000000
-CapPrm: 0000000000000000
-CapEff: 0000000000000000
-CapBnd: 0000000000000000
-CapAmb: 0000000000000000
-NoNewPrivs:     1
-Seccomp:        2
-Seccomp_filters:        1
-```
-
-Все наборы capabilities пусты, установлен `no_new_privs`, активен режим
-seccomp-фильтрации с одним фильтром. Сами поля `Seccomp` не описывают
-правила фильтра: запрет `uname` отдельно проверен сравнением выше.
-
-Новый процесс перенесён в cgroup, затем выполнен запрос из его сети:
-
-```bash
-sudo sh -c 'echo 79622 > /sys/fs/cgroup/pandarecovery-lab1/cgroup.procs'
-cat /proc/79622/cgroup
-sudo nsenter --target 79622 --user --net \
-  curl --noproxy "*" --max-time 5 http://127.0.0.1:8080/health
-```
-
-Получены `0::/pandarecovery-lab1` и ответ `ok`. Таким образом, текущая
-функциональность сервиса работает одновременно с namespaces, cgroup-лимитами,
-нулевыми capabilities и seccomp-фильтром.
+</details>
 
 ## Часть 5 — Свой Docker
 
-### Единый запуск через mydocker.sh
+К этому моменту команд уже накопилось много. После перезапуска нужно было снова находить PID, добавлять процесс в cgroup и настраивать окружение. Надо было что-то с этим делать... Собрали всё в один скрипт, чтобы не повторять вручную.
 
-В `mydocker.sh` собраны проверенные команды из частей 2–4.
-Скрипт запускается обычным пользователем; `sudo` используется только
-для создания cgroup, настройки лимитов и переноса процесса запуска.
-Это сохраняет отображение внутреннего root в непривилегированного
-пользователя хоста.
+<img src="report/memes/nado-delat.jpg" width="340">
 
-Подготовка бинарных файлов из корня репозитория, если они ещё не собраны:
+Получился [mydocker.sh](mydocker.sh). При запуске он:
 
-```bash
-(cd lab1-containerization/api && go build -o api .)
-gcc -Wall -Wextra -Werror -O2 lab1-containerization/seccomp-run.c -o lab1-containerization/seccomp-run -lseccomp
-```
+1. Создаёт cgroup с лимитами 128 MiB RAM, без swap, 0.5 CPU и 32 задачи.
+2. Добавляет себя в группу, чтобы дочерние процессы тоже получили эти лимиты.
+3. Создаёт namespaces, задаёт hostname и включает loopback.
+4. Убирает capabilities, подключает seccomp-фильтр и запускает API.
 
-Запуск из корня репозитория:
+После сборки API и seccomp-обёртки достаточно одной команды:
 
-```bash
+~~~bash
 ./lab1-containerization/mydocker.sh
-```
+~~~
 
-Порядок действий:
+Сам скрипт запускали без sudo. Он запрашивает права только для настройки cgroup, а API на хосте остаётся обычным пользователем.
 
-1. Создаётся новая cgroup `/sys/fs/cgroup/pandarecovery-<PID скрипта>`.
-2. Устанавливаются лимиты: 128 МиБ памяти, запрет swap, 50 мс CPU
-   на период 100 мс, 32 задачи.
-3. Процесс скрипта переносится в группу. Запускаемые затем процессы
-   наследуют её; API получает ограничения с начала выполнения.
-4. Создаются шесть namespaces, задаётся hostname, включается loopback.
-5. Сбрасываются все capabilities, устанавливаются `no_new_privs`
-   и seccomp-фильтр, запускается API с PID 1 внутри.
+После запуска проверили всё вместе. Внутри у API PID 1, на хосте PID 73928 и UID 1000. Лимиты на месте, capabilities обнулены, seccomp включён. И главное, `/health` всё ещё отвечает `ok`.
 
-API и ожидающий его процесс `unshare` входят в общий бюджет cgroup.
-`--kill-child` завершает дочерний процесс при завершении `unshare`.
-Для остановки запуска используется `Ctrl+C`.
-В этой учебной версии пустая cgroup остаётся после остановки.
-Удалить её можно командой `sudo rmdir` с точным путём, напечатанным
-скриптом, после завершения всех процессов группы.
+<a href="report/screenshots/15-mydocker-check.png"><img src="report/screenshots/15-mydocker-check.png" width="800"></a>
 
-Проверка синтаксиса скрипта выполнена. При запуске 22 октября получено:
-
-```text
-Cgroup: /sys/fs/cgroup/pandarecovery-73877
-Лимиты: 128 МиБ RAM, без swap, 0.5 CPU, 32 задачи.
-2026/10/22 03:33:06 PandaRecovery lab API: pid=1 address=:8080
-```
-
-На хосте API получил PID 73928, PPID 73877 и UID 1000.
-Проверки выполнены командами:
-
-```bash
-cat /proc/73928/cgroup
-sudo grep -E '^(Cap|NoNewPrivs|Seccomp)' /proc/73928/status
-cat /sys/fs/cgroup/pandarecovery-73877/memory.max
-cat /sys/fs/cgroup/pandarecovery-73877/memory.swap.max
-cat /sys/fs/cgroup/pandarecovery-73877/cpu.max
-cat /sys/fs/cgroup/pandarecovery-73877/pids.max
-```
-
-Результат:
-
-```text
-0::/pandarecovery-73877
-CapInh: 0000000000000000
-CapPrm: 0000000000000000
-CapEff: 0000000000000000
-CapBnd: 0000000000000000
-CapAmb: 0000000000000000
-NoNewPrivs:     1
-Seccomp:        2
-Seccomp_filters:        1
-134217728
-0
-50000 100000
-32
-```
-
-Запрос `/health` из сети API:
-
-```bash
-sudo nsenter --target 73928 --user --net \
-  curl --noproxy "*" --max-time 5 http://127.0.0.1:8080/health
-```
-
-Получен ответ `ok`. Единый запуск применяет ожидаемые лимиты и ограничения
-прав; API работает в созданном окружении.
-Результаты сравнения с Docker приведены ниже.
+Но до полноценного Docker тут ещё далеко. Лимиты cgroup делят API и ожидающий его `unshare`, в сети есть только loopback, отдельного rootfs нет. Запуск останавливаем через `Ctrl+C`, а пустую cgroup удаляем вручную. Её путь скрипт выводит в терминал.
 
 ### Сравнение с Docker
 
-По выводу `docker version` клиент Docker имеет версию 29.8.1,
-сервер Engine — 29.9.2, Docker Desktop — 4.96.1. Используется контекст
-`desktop-linux`. В `SecurityOptions` указаны встроенный seccomp-профиль
-и cgroup namespace; режим rootless в списке не указан.
+В этом опыте использовали Docker Desktop. Он запускает контейнеры в виртуальной машине, а наш скрипт работает прямо на хосте. Поэтому PID контейнера относится к виртуальной машине, и root внутри контейнера — не то же самое, что root на хосте.
 
-Docker Desktop на Linux запускает Engine и контейнеры в отдельной VM
-([документация](https://docs.docker.com/desktop/setup/install/linux/)).
-Наш `mydocker.sh` работает непосредственно на Linux-хосте, поэтому PID
-контейнера, возвращаемый Docker Engine, относится к VM, а не к пространству
-процессов ноутбука. Это различие окружений нужно учитывать при сравнении.
+Собрали исходный образ по [Dockerfile.baseline](api/Dockerfile.baseline) и запустили его с сопоставимыми ограничениями.
 
-В `api/Dockerfile` добавлен простой одноэтапный образ на базе
-`golang:1.27.3-bookworm`. Внутри копируются исходники и собирается API;
-компилятор и исходники пока остаются в конечном образе.
-При переходе к части 6 этот вариант сохранён как `api/Dockerfile.baseline`,
-а основной `api/Dockerfile` заменён multi-stage-вариантом.
-`CGO_ENABLED=0` отключает cgo при сборке.
-`EXPOSE 8080` описывает порт сервиса, но не публикует его на хосте.
-`CMD` запускает бинарный файл напрямую, без промежуточной оболочки.
-Файл `.dockerignore` исключает локальный бинарный файл из контекста сборки.
+<details>
+<summary>Сборка и docker run</summary>
 
-Воспроизведение сборки базового варианта из корня репозитория:
+~~~bash
+docker build -f lab1-containerization/api/Dockerfile.baseline \
+  -t pandarecovery:baseline lab1-containerization/api
 
-```bash
-docker build -f lab1-containerization/api/Dockerfile.baseline -t pandarecovery:baseline lab1-containerization/api
-```
-
-Сборка успешно завершена. Базовый образ разрешён в digest
-`sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5`.
-
-Контейнер запущен с сопоставимыми лимитами:
-
-```bash
 docker run -d \
   --name pandarecovery-docker \
   --hostname pandarecovery \
-  --memory 128m \
-  --memory-swap 128m \
-  --cpus 0.5 \
-  --pids-limit 32 \
-  --cap-drop ALL \
-  --security-opt no-new-privileges=true \
-  -p 127.0.0.1:8081:8080 \
-  pandarecovery:baseline
-```
-
-Создан контейнер `ab70f29a34a3aa18cc31425c5354619a79d8fb9dd3c67376664a52957d22f399`.
-Параметр `--memory-swap` задаёт общий бюджет RAM и swap; равенство
-с `--memory` запрещает swap. Порт опубликован только на loopback хоста.
-
-```bash
-docker logs pandarecovery-docker
-curl --noproxy "*" --max-time 5 http://127.0.0.1:8081/health
-```
-
-Лог API содержит `pid=1 address=:8080`, HTTP-запрос вернул `ok`.
-Права API и лимиты проверены внутри контейнера:
-
-```bash
-docker exec pandarecovery-docker sh -c '
-  id
-  hostname
-  grep -E "^(Name|Pid|Uid|Cap|NoNewPrivs|Seccomp)" /proc/1/status
-  for name in memory.max memory.swap.max cpu.max pids.max; do
-    printf "%s: " "$name"
-    cat "/sys/fs/cgroup/$name"
-  done
-  uname -s
-'
-```
-
-Результат:
-
-```text
-uid=0(root) gid=0(root) groups=0(root)
-pandarecovery
-Name:   api
-Pid:    1
-Uid:    0       0       0       0
-CapInh: 0000000000000000
-CapPrm: 0000000000000000
-CapEff: 0000000000000000
-CapBnd: 0000000000000000
-CapAmb: 0000000000000000
-NoNewPrivs:     1
-Seccomp:        2
-Seccomp_filters:        1
-memory.max: 134217728
-memory.swap.max: 0
-cpu.max: 50000 100000
-pids.max: 32
-Linux
-```
-
-Поля `/proc/1/status` относятся к API, а `id` и `uname` выполнены отдельным
-процессом `docker exec`. Команда `uname` проходит под конфигурацией Docker;
-наш учебный профиль этот вызов запрещает. Одинаковые поля `Seccomp: 2`
-и `Seccomp_filters: 1` говорят о режиме и количестве фильтров, а не о
-совпадении правил.
-
-| Свойство | `mydocker.sh` | Проверенный запуск Docker |
-| --- | --- | --- |
-| Где работает процесс | Linux-хост ноутбука | VM Docker Desktop |
-| API внутри PID namespace | PID 1 | PID 1 |
-| Hostname | `pandarecovery` | `pandarecovery` |
-| Память и swap | 128 МиБ, swap запрещён | Те же значения в cgroup |
-| CPU | Квота 50000 мкс на период 100000 мкс | Та же квота |
-| Количество задач | 32; бюджет включает `unshare` и API | Лимит 32 внутри контейнера |
-| Capabilities API | Все наборы пусты | Все наборы пусты благодаря `--cap-drop ALL` |
-| `no_new_privs` | 1, выставлен launcher | 1, задан параметром запуска |
-| Seccomp | Наш профиль запрещает `uname`, остальные вызовы разрешены | Встроенный профиль Docker; проверочный `uname` проходит |
-| Сеть | Только внутренний loopback, проверка через `nsenter` | Сеть Docker и публикация `127.0.0.1:8081` |
-| Корневая файловая система | Наследуется файловая система хоста; отдельный mount namespace не создаёт новый корень | Корневая файловая система из образа и записываемый слой контейнера |
-| Пользователь | UID 0 внутри отображён в UID 1000 хоста | Внутри UID 0; аналогичное отображение в UID 1000 параметрами запуска не задавалось |
-| Жизненный цикл и вывод | Терминал, `Ctrl+C`; пустая cgroup удаляется вручную | Фоновый запуск, `docker logs`, `docker stop`, `docker rm` |
-
-Внешний UID процесса Docker нельзя установить по внутреннему UID 0:
-Docker Desktop использует VM и собственные механизмы изоляции.
-Показанные данные не означают, что процесс является root непосредственно
-на ноутбуке.
-
-Скрипт воспроизводит основные механизмы ограничения процесса. Docker
-дополнительно управляет образами и слоями файловой системы, сетями,
-публикацией портов, метаданными и жизненным циклом контейнеров.
-Наш скрипт пока использует файловую систему и утилиты хоста и требует
-ручного удаления пустой cgroup. Лимиты и политики прав в Docker не
-предполагаются равными нашим автоматически: для сравнения они заданы
-параметрами запуска, а seccomp-профили намеренно различаются.
-
-## Часть 6 — Образы и хранение данных
-
-### Multi-stage-сборка
-
-Для сравнения сохранены два Dockerfile:
-
-- `api/Dockerfile.baseline` — исходная одноэтапная сборка с Go и исходниками.
-- `api/Dockerfile` — multi-stage-сборка с конечной базой `scratch`.
-
-Первый этап `build` собирает API так же, как базовый вариант.
-Второй `FROM` начинает новую стадию с пустой файловой системой `scratch`.
-`COPY --from=build /app/api ./api` переносит только готовый бинарный файл.
-Компилятор, исходники и кэш сборки остаются на первом этапе и не входят
-в конечный образ. Сборка с `CGO_ENABLED=0` позволяет запустить этот API
-без динамических библиотек C. В конечный образ не добавляются оболочка
-и диагностические утилиты.
-
-Сборка из корня репозитория:
-
-```bash
-docker build -t pandarecovery:small lab1-containerization/api
-```
-
-Первая сборка multi-stage-варианта завершилась за 4,6 с. Этапы `WORKDIR`,
-`COPY go.mod main.go ./` и `RUN CGO_ENABLED=0 go build -o api .` стадии
-`build` уже использовали кэш предшествующей базовой сборки. Поэтому разницу
-во времени с первой базовой сборкой нельзя приписывать только multi-stage:
-базовые слои уже были скачаны, а компиляция не выполнялась повторно.
-
-Минимальный образ запущен с теми же ресурсными лимитами и ограничениями прав:
-
-```bash
-docker run -d \
-  --name pandarecovery-small \
   --memory 128m --memory-swap 128m \
   --cpus 0.5 --pids-limit 32 \
   --cap-drop ALL \
   --security-opt no-new-privileges=true \
-  -p 127.0.0.1:8082:8080 \
-  pandarecovery:small
+  -p 127.0.0.1:8081:8080 \
+  pandarecovery:baseline
+~~~
 
-docker logs pandarecovery-small
-curl --noproxy "*" --max-time 5 http://127.0.0.1:8082/health
-```
+`--memory-swap` задаёт суммарный бюджет RAM и swap. Здесь он равен `--memory`, поэтому swap запрещён. Порт доступен только через loopback хоста.
 
-Создан контейнер `2c593354a53ed778cd239744658ce184519a290bd7a0710266751f7c76bc979f`.
-API сообщил `pid=1 address=:8080`, запрос вернул `ok`.
+</details>
 
-Сравнение образов:
+API внутри Docker тоже получил PID 1 и вернул `ok`. Проверка cgroup и `/proc/1/status` подтвердила заданные ограничения.
 
-```bash
+| Что сравниваем | `mydocker.sh` | Наш запуск Docker |
+| --- | --- | --- |
+| PID и hostname | PID 1, `pandarecovery` | То же |
+| Ресурсы | 128 MiB, без swap, 0.5 CPU, 32 задачи | Те же лимиты, заданы явно |
+| Capabilities и `no_new_privs` | Capabilities пусты, `no_new_privs=1` | То же, благодаря параметрам запуска |
+| Seccomp | Запрещён `uname`, остальное разрешено | Встроенный профиль Docker; `uname` проходит |
+| Сеть | Только loopback; запрос через `nsenter` | Сеть Docker и публикация порта |
+| Файловая система | Используем файлы хоста | Корень из образа и записываемый слой |
+| Пользователь | UID 0 внутри → UID 1000 хоста | Внутри UID 0; такое же отображение мы не задавали |
+| Управление | Терминал и ручная очистка cgroup | Фоновый запуск, логи, остановка и удаление контейнера |
+
+По ресурсам и правам получили похожий результат. Но Docker ещё берёт на себя образы, отдельную файловую систему, сеть и управление контейнером. В нашем скрипте этого пока нет.
+
+## Часть 6 — Образы и данные
+
+### Уменьшение размера образа
+
+После запуска в Docker занялись размером образа. В базовом варианте остались Go, исходники и инструменты сборки, хотя для работы API нужен только готовый бинарный файл.
+
+В основном [Dockerfile](api/Dockerfile) разделили сборку и запуск. На первой стадии собрали API с `CGO_ENABLED=0`, на второй скопировали готовый файл в `scratch`. Библиотеки C нашему сервису не нужны, поэтому этого хватило.
+
+Образ получился совсем пустым, кроме самого API. Даже привычный `docker exec ... sh` здесь не сработает, потому что оболочки нет.
+
+~~~bash
+docker build -t pandarecovery:small lab1-containerization/api
 docker image inspect pandarecovery:baseline pandarecovery:small \
   --format '{{json .RepoTags}} size={{.Size}} bytes layers={{len .RootFS.Layers}}'
-```
+~~~
 
-| Образ | Размер, байт (`Size`) | Размер, МиБ | Файловые слои |
-| --- | --- | --- | --- |
-| `pandarecovery:baseline` | 1369168698 | 1305,74 | 10 |
-| `pandarecovery:small` | 13552948 | 12,93 | 2 |
+| Образ | Размер по `inspect` | Файловые слои |
+| --- | ---: | ---: |
+| `pandarecovery:baseline` | 1305,74 MiB | 10 |
+| `pandarecovery:small` | 12,93 MiB | 2 |
 
-Размер минимального образа примерно в 101,02 раза меньше (снижение на
-99,01%). Это сравнение поля `Size` образов, а не фактически освобождённого
-места на диске: хранение может использовать общие слои и сжатие.
-Слои первого этапа multi-stage-сборки не входят в конечный образ `small`.
-Число файловых слоёв не равно числу инструкций Dockerfile: `CMD` и `EXPOSE`
-меняют конфигурацию образа, не добавляя файлового содержимого.
+<a href="report/screenshots/16-image-sizes.png"><img src="report/screenshots/16-image-sizes.png" width="850"></a>
 
-Повторная сборка без изменений:
+Образ стал примерно в 101 раз меньше, API по-прежнему отвечает `ok`.
 
-```bash
-docker build --progress=plain -t pandarecovery:small lab1-containerization/api
-```
+При повторной сборке Docker использовал кэш (`CACHED`), заново компилировать API не пришлось.
 
-В логе помечены `CACHED`:
+### Где хранить данные
 
-- `WORKDIR /app` стадии `build`;
-- `COPY go.mod main.go ./`;
-- `RUN CGO_ENABLED=0 go build -o api .`;
-- `COPY --from=build /app/api ./api` конечной стадии.
+Дальше проверили, останутся ли данные после пересоздания контейнера. Не хочется потерять план перемещения груза при обновлении PandaRecovery. Пока вместо плана записали обычный `plan.txt`. Для опыта взяли `baseline`, потому что там есть `sh`, `cat` и `ls`. В нашем образе на `scratch` их нет.
 
-Второй этап `WORKDIR /app` отмечен `DONE 0.0s`, а не `CACHED`.
-Базовый образ разрешён без повторной загрузки слоёв; проверка его метаданных
-заняла 1,7 с. Экспорт слоёв завершился без их повторного создания.
-Манифест и конфигурация конечного образа сохранили свои digest;
-attestation и manifest list получили новые digest. Это не означает,
-что компиляция выполнялась повторно.
+Сначала записали файл в `/app/plan.txt`, удалили контейнер и создали новый. Получили `No such file or directory`. Файл был в записываемом слое контейнера и удалился вместе с ним. Если просто остановить и запустить тот же контейнер, файл останется.
 
-### Записываемый слой и том
+Повторили опыт с томом `panda-plan-data`, подключённым к `/data`. После пересоздания контейнера `/data/plan.txt` сохранился и по-прежнему содержал `plan-v1`. Теперь файл лежал в отдельном хранилище, которое мы подключили заново.
 
-Для файлового эксперимента использован образ `pandarecovery:baseline`,
-где доступны оболочка, `cat` и `ls`. В образе `small` на базе `scratch`
-этих утилит нет. Механизмы записываемого слоя и томов применимы к обоим.
+<details>
+<summary>Как подключили том и проверили сохранность файла</summary>
 
-Сначала создан отдельный контейнер без тома, в него записан файл:
+Сначала пересоздали контейнер без тома — файл пропал:
 
-```bash
-docker run -d --name panda-file-test --network none pandarecovery:baseline
-docker exec panda-file-test sh -c \
-  'printf "plan-v1\n" > /app/plan.txt && cat /app/plan.txt'
-```
+<a href="report/screenshots/17-file-without-volume.png"><img src="report/screenshots/17-file-without-volume.png" width="850"></a>
 
-Первое чтение вернуло `plan-v1`. Затем контейнер остановлен, удалён
-и создан заново из того же образа:
+Затем создали том, подключили его к контейнеру и записали файл:
 
-```bash
-docker stop panda-file-test
-docker rm panda-file-test
-docker run -d --name panda-file-test --network none pandarecovery:baseline
-docker exec panda-file-test ls -l /app/plan.txt
-```
-
-Получен результат:
-
-```text
-ls: cannot access '/app/plan.txt': No such file or directory
-```
-
-Последняя команда завершилась с кодом 2. Старый контейнер имел ID
-`389941db7ef96baa2a991031a6bd051fbc55c2189fa5e782188b61d5ab700d75`,
-новый — `d401ee7a461fb8ca6dc4c9a79b0d5cbc6fa0621628f3a834776dda6f74e68091`.
-Файл находился в записываемом слое старого контейнера, который удалён
-вместе с ним. Образ от записи файла не изменился. Обычная остановка
-и последующий запуск того же контейнера сохраняют его записываемый слой.
-
-Затем опыт повторён с именованным томом:
-
-```bash
+~~~bash
 docker volume create panda-plan-data
 docker run -d --name panda-volume-test --network none \
   --mount type=volume,src=panda-plan-data,dst=/data \
   pandarecovery:baseline
 docker exec panda-volume-test sh -c \
   'printf "plan-v1\n" > /data/plan.txt && cat /data/plan.txt'
-```
+~~~
 
-Первое чтение вернуло `plan-v1`. Контейнер пересоздан с тем же томом:
+После `docker stop` и `docker rm` повторили запуск с тем же `--mount` и прочитали файл.
 
-```bash
-docker stop panda-volume-test
-docker rm panda-volume-test
-docker run -d --name panda-volume-test --network none \
-  --mount type=volume,src=panda-plan-data,dst=/data \
-  pandarecovery:baseline
-docker exec panda-volume-test cat /data/plan.txt
-```
+Содержимое файла сохранилось:
 
-Результат — `plan-v1`. ID контейнера изменился с
-`87d9e4d7d1978e5073019bec9edc4e3def7a5f7b32011333b06e7be1f87ec353`
-на `05f09317d774989ece2be49274c9d40bd16d4d4b4e8a5f78af49965b6c0da2b2`.
-Файл сохранился, поскольку лежал в томе `panda-plan-data`, а не в
-записываемом слое удалённого контейнера.
+<a href="report/screenshots/18-file-with-volume.png"><img src="report/screenshots/18-file-with-volume.png" width="850"></a>
 
-| Место хранения файла | После пересоздания контейнера |
-| --- | --- |
-| Записываемый слой (`/app/plan.txt`) | Файла нет |
-| Тот же именованный том (`/data/plan.txt`) | Файл сохранился |
+</details>
 
-В Docker Desktop том управляется Docker Engine внутри VM. В эксперименте
-том не удалялся; повторный контейнер явно подключил тот же именованный том.
+Для плана спасения подойдёт том. Но бэкап всё равно нужен, ведь приложение может само удалить или испортить файл.
 
-`docker volume create panda-plan-data` создаёт именованный объект хранения,
-управляемый Docker. При используемом локальном драйвере данные размещаются
-в каталоге на машине Docker Engine — здесь внутри VM Docker Desktop.
-Это не обязательный отдельный диск и не каталог внутри образа.
-Параметр `--mount type=volume,src=panda-plan-data,dst=/data` подключает
-содержимое тома в `/data` контейнера. Запись в `/data/plan.txt` идёт в том,
-а не в записываемый слой контейнера. При пересоздании подключается то же
-хранилище, без необходимости копировать файл заново.
+## Часть 7 — gVisor
 
-Именованный том также может автоматически создаваться при `docker run`,
-если указанное имя ещё не существует. В эксперименте он создан явно,
-чтобы отделить создание хранилища от его подключения.
-Сведения о нём можно посмотреть через `docker volume inspect panda-plan-data`.
-Подробнее: [тома Docker](https://docs.docker.com/engine/storage/volumes/).
+До этого мы меняли окружение и права процесса, но системные вызовы приложения по-прежнему обрабатывало общее ядро Linux. Решили посмотреть, что изменится при запуске того же API под gVisor.
 
-## Часть 7 — Дополнительная изоляция с gVisor
+В gVisor системные вызовы приложения обрабатывает Sentry. Это пользовательское ядро, которое само обращается к Linux через ограниченный набор вызовов.
 
-### Подготовка Docker Engine на хосте
+### Что проверили
 
-В Docker Desktop обнаружены только runtime `io.containerd.runc.v2` и `runc`.
-На Linux-хосте исходно отсутствовали `dockerd`, `runsc`, служба Docker
-и сокет `/var/run/docker.sock`. Для эксперимента с gVisor установлен
-отдельный Docker Engine из официального apt-репозитория для Ubuntu 26.04
-(`resolute`). Ранее установленный CLI был из пакета для `noble`,
-а соответствующий старый репозиторий был отключён.
+Для этого установили Docker Engine прямо на Linux-хост и добавили `runsc`, среду запуска gVisor. Переключились с Docker Desktop на контекст `default`. Готовый образ `pandarecovery:small` перенесли через `docker save/load`, собирать его заново не пришлось.
 
-После установки и запуска службы выполнено:
+Запустили один и тот же образ двумя способами, через обычный `runc` и через `runsc`. Оба API вернули `ok`. Здесь проверяли только запуск и процессы на хосте, поэтому отдельные лимиты ресурсов не задавали.
 
-```bash
-sudo systemctl start docker
-sudo docker --context default version
-```
+<details>
+<summary>Регистрация runtime и запуск под gVisor</summary>
 
-Проверены версии: клиент и сервер Docker Engine 29.9.2, API 1.56,
-containerd v2.4.2, runc 1.5.2, docker-init 0.19.0; платформа `linux/amd64`.
-Для дальнейшего опыта используется явно указанный контекст `default`.
-Он обращается к Engine на хосте; контекст `desktop-linux` относится
-к отдельному Engine внутри Docker Desktop. Их образы, контейнеры и тома
-хранятся независимо.
+После установки пакета `runsc` зарегистрировали runtime:
 
-Из официального apt-репозитория gVisor установлен пакет `runsc`
-версии 20261019.0. Команда `runsc --version` показала:
-
-```text
-runsc version release-20261019.0
-spec: 1.2.1
-```
-
-После установки пакета runtime автоматически не появился в конфигурации
-локального Engine. Выполнена явная регистрация и перезапуск службы:
-
-```bash
+~~~bash
 sudo runsc install
 sudo systemctl restart docker
-sudo docker --context default info \
-  --format '{{range $name, $runtime := .Runtimes}}{{println $name}}{{end}}'
-```
 
-Команда установки сообщила `Runtime runsc not found: adding`
-и `Successfully updated config.`. После перезапуска в списке доступны:
-
-```text
-io.containerd.runc.v2
-runc
-runsc
-```
-
-### Запуск API под gVisor
-
-Тот же минимальный образ перенесён из Docker Desktop в Engine хоста:
-
-```bash
 docker --context desktop-linux image save pandarecovery:small |
   sudo docker --context default image load
-```
 
-Получено `Loaded image: pandarecovery:small`. Перенос выполнен без
-пересборки, поэтому сравнивается та же программа и файловая система образа.
-
-```bash
 sudo docker --context default run -d \
   --runtime=runsc \
   --name pandarecovery-gvisor \
@@ -1007,349 +416,172 @@ sudo docker --context default run -d \
   --security-opt no-new-privileges=true \
   -p 127.0.0.1:8083:8080 \
   pandarecovery:small
-```
+~~~
 
-Создан контейнер `3458fe4c3907d94282e7e17e1bfe2e392a66da7b05339c0304795799ce6131fa`.
-Для первого запуска проверяется совместимость приложения с runtime;
-ресурсные лимиты в этой команде отдельно не заданы.
+Для обычного запуска использовали `--runtime=runc`, имя `pandarecovery-runc` и порт 8084. Проверенный `runsc` — версии `20261019.0`.
 
-```bash
-sudo docker --context default logs pandarecovery-gvisor
-curl --noproxy "*" --max-time 5 http://127.0.0.1:8083/health
-sudo docker --context default inspect pandarecovery-gvisor \
-  --format 'runtime={{.HostConfig.Runtime}} running={{.State.Running}}'
-```
+</details>
 
-API сообщил `pid=1 address=:8080`, HTTP-запрос вернул `ok`,
-Docker подтвердил `runtime=runsc running=true`.
-Сервис успешно запускается под gVisor. Проверка запуска сама по себе
-не измеряет степень защищённости или производительность.
+В `ps` разница уже видна. У обычного контейнера на хосте виден `api`, а у варианта с gVisor на его месте `gvisor_sentry`.
 
-### Сравнение gVisor, runc и своего запуска
+<a href="report/screenshots/19-gvisor-compare.png"><img src="report/screenshots/19-gvisor-compare.png" width="850"></a>
 
-Для сравнения на том же Engine хоста запущен тот же минимальный образ
-через обычный `runc`, с такими же параметрами прав и без отдельных
-ресурсных лимитов, как в проверочном запуске gVisor:
-
-```bash
-sudo docker --context default run -d \
-  --runtime=runc \
-  --name pandarecovery-runc \
-  --cap-drop ALL \
-  --security-opt no-new-privileges=true \
-  -p 127.0.0.1:8084:8080 \
-  pandarecovery:small
-curl --noproxy "*" --max-time 5 http://127.0.0.1:8084/health
-```
-
-Ответ — `ok`. Для обоих контейнеров прочитаны runtime и PID:
-
-```bash
-sudo docker --context default inspect \
-  pandarecovery-runc pandarecovery-gvisor \
-  --format '{{.Name}} runtime={{.HostConfig.Runtime}} host_pid={{.State.Pid}}'
-```
-
-```text
-/pandarecovery-runc runtime=runc host_pid=71446
-/pandarecovery-gvisor runtime=runsc host_pid=68949
-```
-
-Проверка процессов на хосте:
-
-```bash
-sudo ps -p 71446,68949 -o pid,ppid,user,comm
-sudo readlink /proc/71446/exe
-sudo readlink /proc/68949/exe
-```
-
-```text
-    PID    PPID USER     COMMAND
-  68949   68918 root     gvisor_sentry
-  71446   71421 root     api
-
-/app/api
-/usr/bin/gvisor-bin/gvisor_sentry
-```
-
-У обычного контейнера Docker показывает непосредственно процесс API.
-У gVisor основной PID на стороне хоста принадлежит Sentry — пользовательскому
-ядру, реализующему Linux-интерфейс для приложения. Оба контейнера работают
-на одном Linux-хосте, поэтому это сравнение не смешивает Docker Desktop VM
-и непосредственный запуск на ноутбуке.
-
-| Свойство | `mydocker.sh` | Docker с `runc` на хосте | Docker с `runsc` на хосте |
-| --- | --- | --- | --- |
-| Обработка системных вызовов API | Ядро Linux хоста, с нашим seccomp-фильтром | Ядро Linux хоста, со встроенной политикой Docker | Пользовательское ядро Sentry; оно взаимодействует с Linux через ограниченный интерфейс |
-| Основной наблюдаемый процесс | API | API (`/app/api`) | Sentry (`gvisor_sentry`) |
-| Файловая система приложения | Файлы хоста, отдельный mount namespace | Корень из образа `small` | Тот же образ `small`, доступ к ресурсам через механизмы gVisor |
-| Ограничения окружения | Namespaces, cgroups, capabilities, seccomp настроены скриптом | Настройка окружения и жизненного цикла через Docker | Docker управляет контейнером; runsc добавляет границу пользовательского ядра |
-| Проверенный HTTP-ответ | `ok` | `ok` на порту 8084 | `ok` на порту 8083 |
-
-У обычного контейнера с хостом остаётся общим ядро Linux. Namespaces
-ограничивают видимость ресурсов, cgroups — их потребление, capabilities
-и seccomp — разрешённые действия и вызовы. Однако разрешённые системные
-вызовы всё равно обрабатывает общее ядро. Уязвимость в доступном интерфейсе
-этого ядра потенциально позволяет преодолеть границу контейнера.
-Отдельный образ не содержит отдельного работающего ядра ОС.
-
-gVisor реализует системный интерфейс приложения в Sentry. Вызовы приложения
-обрабатываются этим пользовательским ядром; они не перенаправляются
-один к одному как произвольные вызовы Linux хоста. Для собственной работы
-Sentry использует ограниченный набор интерфейсов хоста и дополнительные
-механизмы изоляции. Это уменьшает прямую поверхность атаки на ядро хоста
-и создаёт дополнительную границу, которую нужно преодолеть для выхода
-из окружения. gVisor при этом продолжает зависеть от Linux-хоста;
-его изоляция не означает отсутствие любых возможных уязвимостей.
-
-Дополнительная обработка вызовов может создавать накладные расходы,
-а поддержка Linux-интерфейсов имеет ограничения совместимости.
-В этой работе подтверждён запуск нашего API; измерение производительности
-и испытания других приложений не выполнялись.
-Архитектурные выводы опираются на [описание устройства gVisor](https://gvisor.dev/docs/architecture_guide/intro/)
-и [его модель безопасности](https://gvisor.dev/docs/architecture_guide/security/).
+Нашему API хватило возможностей gVisor. Для других приложений совместимость придётся проверять отдельно. Скорость работы здесь не сравнивали.
 
 ## Часть 8 — Мониторинг
 
-### Стек мониторинга и дашборд
+Ограничения мы уже проверили через файлы cgroup и отдельные запросы. Теперь собрали дашборд, чтобы следить за ресурсами на графиках. Так проще увидеть, как растёт нагрузка и когда сервис упирается в лимиты.
 
-По договорённости стек мониторинга опирается на
-[lab2-observability](https://github.com/Owl876/containerization-and-orchestration-labs/tree/main/lab2-observability).
-При изучении использована версия ветки `main` с commit
-`836f9ed42c41dcca836b55ce7d8009ddc79fe24e`.
+<table>
+<tr><td align="center">
 
-Изучены `README-lab.md`, настройки `observability/kube-prometheus-stack-values.yaml`,
-шаблоны `ServiceMonitor`, `PrometheusRule`, ConfigMap дашборда
-и параметры Helm-чарта `panda-api`.
-В лабораторной 2 используются minikube и Helm-релиз `kube-prometheus-stack`
-в namespace `monitoring`: Prometheus, Grafana и Alertmanager.
-Дашборды подхватываются через ConfigMap с лейблом `grafana_dashboard: "1"`;
-в values включён поиск по всем namespace и сняты фильтры по Helm release
-для ServiceMonitor/PodMonitor и правил.
+<img src="report/story/2-resource-monitoring.png" width="560">
 
-Существующий дашборд lab2 показывает RED-метрики Python-сервиса `panda-api`.
-В части 8 первой лабы нужны ресурсные метрики нашего Go API: память, CPU
-и throttling. Поэтому переиспользуется подход и стек, а панели и правила
-должны быть адаптированы к ресурсным метрикам.
+<br>
 
-API первой лабы работает вне Kubernetes, на Engine Linux-хоста или
-через `mydocker.sh`. Метрики pod-ов minikube сами по себе не являются
-метриками этого процесса. Источник cgroup-метрик должен наблюдать именно
-Linux-хост с нашим API; затем Prometheus должен получать данные этого
-источника. Возможный источник — cAdvisor на хосте.
+*Панды снова нагружают сервис. Теперь рядом с терминалом открыты графики, и можно посмотреть, куда уходит память и хватает ли CPU.*
 
-Настройки уведомлений Telegram, прокси, Loki и Jaeger в исходной lab2
-относятся к её окружению; для ресурсного мониторинга первой лабы
-не требуется переносить их целиком. Уведомления внешним получателям
-в рамках подготовки этой части не настраивались.
-Существующий стек lab2 работает на другом ноутбуке команды. Для этой
-работы выбран отдельный локальный стенд с тем же подходом к развёртыванию:
-minikube с Docker driver и Helm-релиз `kube-prometheus-stack`.
-Кластер запущен на Engine Linux-хоста (контекст `default`), чтобы сбор
-ресурсных метрик относился к той же машине, где работает API.
-При первоначальной проверке была найдена команда `kubectl` из Snap;
-`minikube` и `helm` отсутствовали.
+</td></tr>
+</table>
 
-Установлен Minikube v1.39.0, commit
-`7a9f6a841470a207de8cf4bafcccee0969d8ba10`.
-После добавления пользователя в группу `docker` и открытия оболочки
-через `newgrp docker` проверка локального Engine без `sudo` вернула
-`Server=29.9.2`.
+Для мониторинга взяли знакомую по [второй лабе](../lab2-observability/README-lab.md) связку Prometheus и Grafana. Установили её через `kube-prometheus-stack` в minikube на том же компьютере.
 
-Кластер создан командой:
+Но API у нас работает в Docker вне Kubernetes. По метрикам pod-ов minikube его не увидишь. Поэтому рядом запустили контейнер cAdvisor, который читает счётчики cgroups на хосте и отдаёт их Prometheus:
 
-```bash
-DOCKER_CONTEXT=default minikube start \
-  -p panda-monitoring \
-  --driver=docker \
-  --container-runtime=containerd \
-  --cpus=4 \
-  --memory=6144 \
-  --disk-size=20g
+```mermaid
+flowchart LR
+    subgraph host["Linux-хост"]
+        direction LR
+        subgraph containers["API и cAdvisor в Docker"]
+            subgraph isolation["Контейнер API · runc"]
+                API("PandaRecovery API<br/>Свои namespaces<br/>Ограниченные права")
+            end
+            CG["cgroup API на хосте<br/>Память, CPU и throttling"]
+            CA("Контейнер cAdvisor<br/>Читает метрики хоста")
+            API -.->|Расход ресурсов| CG
+            CG -->|Счётчики| CA
+        end
+        subgraph monitoring["minikube · Kubernetes"]
+            PR[("Prometheus<br/>История метрик")]
+            GR("Grafana<br/>Дашборд API")
+            PR -->|Данные| GR
+        end
+        CA -->|Метрики · каждые 15 с| PR
+    end
+
+    classDef service fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px
+    classDef counters fill:#f1f5f9,stroke:#94a3b8,color:#334155,stroke-dasharray:4 4
+    classDef metrics fill:#ccfbf1,stroke:#0d9488,color:#134e4a,stroke-width:2px
+    classDef dashboard fill:#ffedd5,stroke:#ea580c,color:#7c2d12,stroke-width:2px
+    class API service
+    class CG counters
+    class CA,PR metrics
+    class GR dashboard
+    style host fill:transparent,stroke:#94a3b8,color:#64748b
+    style containers fill:#f8fafc,stroke:#cbd5e1,color:#334155
+    style isolation fill:#eff6ff,stroke:#0284c7,color:#0c4a6e,stroke-width:2px,stroke-dasharray:6 4
+    style monitoring fill:#f0fdfa,stroke:#99f6e4,color:#134e4a
 ```
 
-Подготовлены Kubernetes v1.37.0 и containerd 2.3.4.
-Включены `storage-provisioner` и `default-storageclass`.
-Сначала нода была `NotReady` во время инициализации; последующая проверка
-готовности прошла успешно:
+У API отдельное окружение и лимиты ресурсов, но ядро Linux общее с хостом. cAdvisor работает в другом контейнере и читает счётчики cgroup с хоста. Код Go-сервиса для этого менять не пришлось.
 
-```bash
-DOCKER_CONTEXT=default minikube -p panda-monitoring status
-DOCKER_CONTEXT=default minikube -p panda-monitoring kubectl -- \
-  wait --for=condition=Ready node/panda-monitoring --timeout=120s
-DOCKER_CONTEXT=default minikube -p panda-monitoring kubectl -- get nodes
-```
+### Что настроили
 
-`host`, `kubelet` и `apiserver` получили статус `Running`, kubeconfig —
-`Configured`; нода `panda-monitoring` — `Ready`.
-Snap-клиент kubectl имеет версию 1.35.9, поэтому используется совместимый
-клиент v1.37.0, который Minikube скачал с проверкой контрольной суммы.
+- cAdvisor отдаёт метрики на порту 8085; Prometheus опрашивает `host.minikube.internal:8085` каждые 15 секунд.
+- В запросах выбираем `job="panda-host-cadvisor", name="pandarecovery-runc"`, чтобы смотреть именно наш API.
+- [Настройки стека](monitoring/kube-prometheus-stack-values.yaml) и [дашборд](monitoring/panda-resources-dashboard.yaml) сохранены в репозитории.
+- Grafana подхватывает дашборд из ConfigMap с лейблом `grafana_dashboard: "1"`.
 
-Для команд Minikube требуется явно выбирать Engine хоста: без переменной
-окружения проверка обратилась к Docker Desktop и не нашла контейнер ноды.
-С `DOCKER_CONTEXT=default` проверки работали, но Minikube предупреждал
-об отсутствии `meta.json` контекста. Создан явный именованный контекст:
+<details>
+<summary>Как проверили сбор метрик</summary>
 
-```bash
-docker context create panda-host \
-  --docker host=unix:///var/run/docker.sock
-DOCKER_CONTEXT=panda-host minikube -p panda-monitoring status
-```
+Minikube запустили через Docker и выделили ему 4 CPU и 6 GiB памяти.
 
-Проверка через `panda-host` прошла без предупреждения, компоненты остались
-`Running`. Этот Docker-контекст указывает на тот же локальный Engine;
-Kubernetes-контекст кластера называется `panda-monitoring`.
+cAdvisor настроили по официальной инструкции. Дали ему доступ к Docker и нужным каталогам хоста, чтобы он мог читать метрики контейнеров.
 
-Из официального архива установлен Helm v4.3.1+gc0d08d0.
-SHA256 скачанного Linux amd64 архива
-`0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b`
-совпал с опубликованным в релизе; проверка вернула `OK`.
+В Prometheus выполнили `up{job="panda-host-cadvisor"}` и получили `1`. Значит, Prometheus успешно забирает метрики у cAdvisor.
 
-Для стека подготовлен файл
-`monitoring/kube-prometheus-stack-values.yaml`, адаптированный из lab2.
-Сохранены настройки выбора мониторов и правил, поиск дашбордов по всем
-namespace и отключение недоступных в minikube control-plane targets.
-Prometheus собирает данные каждые 15 с; задано хранение до 24 часов
-с ограничением размера TSDB 1GB. Для основных компонентов заданы
-requests/limits под локальный кластер. Alertmanager использует только
-receiver `null`; внешние уведомления не настроены.
-Grafana получает сгенерированный чартом пароль в Secret.
+<a href="report/screenshots/20-cadvisor-up.png"><img src="report/screenshots/20-cadvisor-up.png" width="900"></a>
 
-Закреплена версия Helm-чарта `kube-prometheus-stack` 92.11.0.
-До установки выполнены `helm lint` и локальный `helm template` с
-`--kube-version 1.37.0`; обе проверки прошли. В отрендерованных ресурсах
-дополнительно проверены селекторы мониторов/правил, интервал сбора,
-настройки хранения, receiver Alertmanager и сервисы трёх UI.
-Стек установлен в Kubernetes-контекст `panda-monitoring`, namespace
-`monitoring`; Helm сообщил `STATUS: deployed`, revision 1.
-В первом списке подов Grafana, Alertmanager, Operator, kube-state-metrics
-и node-exporter находились в `Running` со всеми контейнерами `Ready`.
-Prometheus сначала находился в `Running` с готовностью `1/2`.
-Последующая проверка `kubectl wait --for=condition=Ready` для его пода
-вернула `condition met`; готовность подтверждена. Доступ к UI Prometheus
-подтверждён скриншотами ниже; UI Grafana и свой дашборд проверены
-скриншотом 25 после устранения первоначального OOM.
-Сбор памяти, CPU и throttling API с хоста подтверждён ниже.
-Настройки CPU/RAM и установившееся потребление CPU подтверждены ниже.
-Выбор трёх метрик для алертов и обоснование приведены в конце этой части.
+Это проверка связи с cAdvisor. Дальше нашли метрики самого API по имени контейнера `pandarecovery-runc`.
 
-На Engine хоста (`panda-host`) запущен cAdvisor 0.60.6 из официального
-образа `ghcr.io/google/cadvisor:0.60.6` с `--cgroupns=host`,
-`--privileged` и bind mounts системных каталогов. Имя контейнера —
-`panda-cadvisor`, порт хоста — 8085; включены метрики `cpu,memory`,
-интервал сбора cAdvisor — 5 с. Digest образа:
-`sha256:b8e7d1093144fd088f425ff003d75a4aa405de075db78dae3bc563730b1bd07a`.
-Счётчики ресурсов поступают из cgroup ядра; Docker API позволяет
-сопоставить их с контейнерами. Изменять Go API для этого не требуется.
-Запрос `http://127.0.0.1:8085/metrics` с хоста прошёл успешно.
-Для `name="pandarecovery-runc"` найдены
-`container_cpu_usage_seconds_total` (0.079659 с накопленного CPU-времени)
-и `container_memory_working_set_bytes` (2027520 байт, около 1.93 МиБ).
-В первоначальном выбранном выводе счётчик throttling отсутствовал.
-Позднее он появился при проверке под нагрузкой, описанной ниже.
-В предыдущем сравнении
-runtime контейнер запускался без явных ресурсных лимитов.
-В оболочке студента `rg` отсутствует, поэтому для проверки вывода
-используется `grep -E` и `grep -F`.
-На ноде Minikube имя `host.minikube.internal` разрешается в
-`192.168.49.1`. Образ Prometheus не содержит `sh`, поэтому проверка
-через `kubectl exec ... sh` не выполнилась. Для диагностики запущен
-временный под `panda-cadvisor-check` с образом `busybox:1.37.0`
-в namespace `monitoring`. Получение `/metrics` через `wget` прошло
-успешно и по имени, и по IP. Диагностический под удалён после проверки.
+</details>
 
-В values добавлен `prometheus.prometheusSpec.additionalScrapeConfigs`
-с job `panda-host-cadvisor` и target `host.minikube.internal:8085`.
-Опрос наследует общий интервал 15 с. После применения настроек в UI
-Prometheus выполнен запрос `up{job="panda-host-cadvisor"}`.
-Получена одна серия с `instance="host.minikube.internal:8085"` и значением
-`1`: успешный опрос экспортёра подтверждён скриншотом 20.
-Затем запрос
-`container_memory_working_set_bytes{job="panda-host-cadvisor",name="pandarecovery-runc"}`
-вернул одну серию со значением 2027520 байт (около 1.93 МиБ).
-Получение метрики памяти именно контейнера API в Prometheus подтверждено
-скриншотом 21. `up` экспортёра сам по себе не проверяет `/health` приложения.
-Источник параметров запуска: [официальная инструкция cAdvisor](https://github.com/google/cadvisor/blob/v0.60.6/README.md#quick-start-running-cadvisor-in-a-docker-container).
+Во время настройки сама Grafana получила `OOMKilled` при лимите 256 MiB. Стали смотреть, хватает ли памяти API, а памяти не хватило мониторингу.
 
-Для проверки под нагрузкой предложены `docker update` с лимитами
-128 МиБ RAM, без swap, 0.5 CPU и 32 задачи, затем по одному запросу
-`/eat?mb=32` и `/burn`. Первая попытка обновления из нового терминала
-завершилась отказом доступа к Docker socket; предложено активировать
-группу через `newgrp docker`. Последующая проверка `docker inspect`
-вернула `NanoCpus=500000000 Memory=134217728`, подтвердив настройки
-0.5 CPU и 128 МиБ RAM. Swap и pids этой командой не проверялись.
-На последующих скриншотах получены:
+<img src="report/memes/derzhatsya.jpg" width="300">
 
-- рабочий набор памяти: 34.94921875 МиБ (скриншот 22);
-- `rate(container_cpu_usage_seconds_total{job="panda-host-cadvisor",name="pandarecovery-runc",cpu="total"}[2m])`:
-  около 0.2898 ядра (скриншот 23);
-- `increase(container_cpu_cfs_throttled_periods_total{job="panda-host-cadvisor",name="pandarecovery-runc"}[2m])`:
-  около 882.92 периодов (скриншот 24).
+Подняли лимит Grafana до 1 GiB, а request до 256 MiB. После этого дашборд открылся. Заодно проверили OOM ещё раз, хотя в этот раз не планировали.
 
-Метрика памяти выросла примерно на 33 МиБ относительно исходных 1.93 МиБ;
-рабочий набор включает дополнительные расходы приложения.
-Throttling за выбранное окно подтверждён. Дробный результат `increase`
-обусловлен экстраполяцией на полное окно запроса, а не дробными событиями.
-CPU на первом снимке ниже предложенного потолка 0.5; один снимок
-не устанавливает причину. Настройки CPU и RAM подтверждены через inspect;
-последующий график Grafana (скриншот 25) показывает выход CPU на плато
-0.500 ядра после начального роста двухминутной средней.
+### Что видно под нагрузкой
 
-Подготовлен `monitoring/panda-resources-dashboard.yaml`: ConfigMap
-с лейблом `grafana_dashboard: "1"` и JSON дашборда
-`PandaRecovery — ресурсы API` (uid `panda-lab1-resources`).
-Sidecar Grafana должен подхватить его так же, как дашборды во второй лабе.
-Используется существующий datasource с uid `prometheus`, наличие которого
-проверено в сгенерированной конфигурации Helm-чарта. Три панели показывают
-рабочий набор памяти, `rate` CPU за 2 минуты и `increase` числа периодов
-с throttling за 2 минуты. Выбраны последние 30 минут, обновление каждые
-15 с. Скриншот 25 подтверждает, что дашборд подхвачен Grafana и все три
-панели отображают данные `pandarecovery-runc`. На снимке последние значения:
-память 35.41 МиБ, CPU 0.500 ядра, throttling около 1.2 тыс. периодов
-за скользящее окно 2 минуты. На графиках виден переход от простоя к нагрузке.
+Для API подтвердили лимиты 128 MiB RAM и 0.5 CPU, затем вызвали `/eat?mb=32` и `/burn`.
 
-Во время открытия Grafana `port-forward` завершился с
-`connection reset by peer` и `lost connection to pod`.
-Диагностика показала, что контейнер `grafana` версии 13.2.4-distroless
-был завершён с `Reason: OOMKilled`, exit code 137, и перезапущен
-один раз. Лимит составлял 256 МиБ, request — 128 МиБ;
-оба sidecar-контейнера продолжали работать без перезапусков.
-Для исправления в values повышен лимит Grafana до 1 ГиБ,
-request — до 256 МиБ. После предложенного обновления Helm и повторного
-port-forward дашборд успешно открыт (скриншот 25). Длительная работа
-без новых OOM этим единственным снимком не проверялась.
+<a href="report/screenshots/25-grafana-dashboard.png"><img src="report/screenshots/25-grafana-dashboard.png" width="960"></a>
 
-### Выбор метрик для алертов
+На графиках виден переход от простоя к нагрузке:
 
-Для нашего API выбраны три ресурсные метрики. Они позволяют предупредить
-о нехватке памяти, загрузке доступного CPU и фактическом ограничении
-выполнения CPU-квотой. По каждой важны устойчивое состояние и контекст
-нагрузки; единичный высокий показатель сам по себе не доказывает отказ API.
+- память выросла примерно с 1,93 до 35,41 MiB после запроса на 32 MiB;
+- CPU дошёл до лимита 0.5 ядра и держался на нём;
+- ограничение CPU срабатывало примерно в 1200 периодах за две минуты.
 
-| Метрика и способ наблюдения | Что обнаруживает | Чем грозит API |
-| --- | --- | --- |
-| `container_memory_working_set_bytes`: рабочий набор памяти относительно заданного лимита 128 МиБ | Рост памяти и приближение рабочего набора к пределу контейнера. `/eat` удерживает выделенные блоки до завершения процесса. | Дальнейшие выделения могут привести к исчерпанию бюджета памяти и OOM kill. Процесс завершится, запросы оборвутся, сервис станет недоступен до запуска нового процесса. |
-| `container_cpu_usage_seconds_total`: среднее потребление через `rate(...[2m])` относительно квоты 0.5 CPU | Длительное использование почти всего разрешённого CPU-времени: запаса для дополнительной вычислительной работы мало. | При увеличении числа запросов они дольше ждут обработки; растут время ответа и риск таймаутов. В нашем тесте `/burn` намеренно создаёт такую нагрузку. |
-| `container_cpu_cfs_throttled_periods_total`: прирост через `increase(...[2m])` | Частое исчерпание CPU-квоты, после которого ядро приостанавливает выполнение задач cgroup до следующего периода. Это возможно и при одном процессе на свободном хосте. | Процесс готов работать, но временно не получает CPU из-за лимита; обработка запросов задерживается. Длительный throttling — повод оценить квоту и вычислительную нагрузку. |
+Первый запрос Prometheus показал около 0.29 ядра вместо ожидаемых 0.5. Позже среднее за две минуты дошло до 0.5 и держалось на этом уровне. На дашборде это видно, просто по первой точке делать вывод было рано.
 
-CPU-счётчик хранит накопленное время, поэтому для текущего потребления
-используется скорость его роста. Память — значение в момент измерения,
-её можно показывать непосредственно. В `rate(...[2m])` две минуты —
-скользящее окно расчёта каждой точки, а выбранные на дашборде 30 минут —
-отрезок отображаемой истории.
+<details>
+<summary>Запросы панелей</summary>
 
-Загрузка CPU и throttling связаны, но показывают разные стороны проблемы:
-первая — сколько CPU фактически использовано, второй — что ограничитель
-уже задерживал выполнение. Конкуренция с другими процессами не является
-обязательным условием throttling.
+Память — текущее значение:
 
-Рабочий набор не совпадает со всем объёмом памяти, учитываемым
-`memory.max`, поэтому его близость к лимиту — предупредительный сигнал,
-а не точное предсказание момента OOM. Аналогично, положительный throttling
-не доказывает нарушение времени ответа: для рабочего сервиса его следует
-сопоставлять с задержками и ошибками запросов.
+~~~promql
+container_memory_working_set_bytes{
+  job="panda-host-cadvisor", name="pandarecovery-runc"
+}
+~~~
 
-В рамках задания выбраны и обоснованы метрики; правила с конкретными
-порогами и внешние уведомления не настраивались. Для реальных алертов
-порог и длительность условия следует выбирать под ожидаемую нагрузку;
-число периодов throttling также зависит от CPU-периода и окна наблюдения.
+Среднее потребление CPU за две минуты:
+
+~~~promql
+rate(container_cpu_usage_seconds_total{
+  job="panda-host-cadvisor", name="pandarecovery-runc", cpu="total"
+}[2m])
+~~~
+
+Как часто срабатывало ограничение CPU за две минуты:
+
+~~~promql
+increase(container_cpu_cfs_throttled_periods_total{
+  job="panda-host-cadvisor", name="pandarecovery-runc"
+}[2m])
+~~~
+
+Каждая точка показывает, сколько раз сработало ограничение CPU за предыдущие две минуты (`[2m]`). На графике видна история за 30 минут. Prometheus оценивает прирост счётчика по собранным значениям, поэтому число может получиться дробным.
+
+</details>
+
+### Три метрики для алертов
+
+Для будущих алертов выбрали те же три метрики с дашборда:
+
+- Память приближается к лимиту. Если рост продолжится, API может получить OOM.
+- CPU долго держится у своей квоты. Запаса на дополнительную нагрузку почти нет.
+- Throttling срабатывает часто. Процессу приходится ждать, поэтому стоит проверить, не выросло ли время ответа.
+
+График памяти помогает заметить рост, но точный момент OOM по нему не определить. cgroup учитывает больше памяти, чем показано в этой метрике.
+
+Сами алерты и уведомления здесь не настраивали. Пока выбрали, за чем следить, а пороги нужно будет подобрать под реальную нагрузку.
+
+## Что получилось по итогу
+
+Начали с обычного API на хосте, а в итоге собрали свой скрипт запуска с изоляцией, лимитами и ограниченными правами. Сравнили его с Docker, уменьшили образ примерно в сто раз и проверили, как сохранить данные при замене контейнера. Потом попробовали gVisor и собрали дашборд ресурсов. Теперь видно не только то, что API отвечает, но и как он ведёт себя под нагрузкой.
+
+<table>
+<tr><td align="center">
+
+<img src="report/story/3-first-results.png" width="640">
+
+<br>
+
+*Первый сервис запущен, ограничения проверены, метрики видны. Панды записывают результаты и возвращаются к плану работ. Корабль пока на мели — контейнеризация сама его не спасёт. Но теперь у команды есть проверенный способ запускать сервисы PandaRecovery на общем сервере.*
+
+</td></tr>
+</table>
