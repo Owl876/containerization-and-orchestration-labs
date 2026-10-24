@@ -1,0 +1,8 @@
+FROM golang:1.27.3-bookworm
+
+WORKDIR /app
+COPY go.mod main.go ./
+RUN CGO_ENABLED=0 go build -o api .
+
+EXPOSE 8080
+CMD ["./api"]

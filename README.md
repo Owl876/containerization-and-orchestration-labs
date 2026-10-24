@@ -2,6 +2,13 @@
 
 Лабораторные работы по контейнеризации и оркестрации (магистратура ИТМО).
 
+## Лабораторные работы
+
+| Работа | Материалы |
+| --- | --- |
+| 1 — Свой Docker | [lab1-containerization](lab1-containerization/README.md) |
+| 2 — Observability | [lab2-observability](lab2-observability/README-lab.md) |
+
 <img src="assets/kuberpanda.png" alt="Панда-путешественница прибывает на тропический остров на грузовом судне" width="700">
 
 ## Команда
