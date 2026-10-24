@@ -1,0 +1,40 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: trusted-images
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+  - name: trusted-images
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    exclude:
+      any:
+      - resources:
+          namespaces:
+          - kube-system
+          - kube-public
+          - kube-node-lease
+          - kyverno
+          - cnpg-system
+          - monitoring
+          - logging
+          - tracing
+          - local-path-storage
+    validate:
+      message: Use registry.local/shop or the approved CloudNativePG repository.
+      pattern:
+        spec:
+          containers:
+          - name: '*'
+            image: registry.local/shop/* | ghcr.io/cloudnative-pg/*
+          =(initContainers):
+          - name: '*'
+            image: registry.local/shop/* | ghcr.io/cloudnative-pg/*
+          =(ephemeralContainers):
+          - name: '*'
+            image: registry.local/shop/* | ghcr.io/cloudnative-pg/*

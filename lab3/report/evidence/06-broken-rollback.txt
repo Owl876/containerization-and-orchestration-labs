@@ -1,0 +1,53 @@
+2026-10-24T19:44:50+03:00
+Release "shop" has been upgraded. Happy Helming!
+NAME: shop
+LAST DEPLOYED: Sat Oct 24 19:44:50 2026
+NAMESPACE: shop
+STATUS: deployed
+REVISION: 15
+TEST SUITE: None
+Waiting for deployment "shop-api" rollout to finish: 1 out of 3 new replicas have been updated...
+error: deployment "shop-api" exceeded its progress deadline
+NAME                          READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/shop-api      3/3     1            3           164m
+deployment.apps/shop-worker   2/2     2            2           164m
+
+NAME                                     DESIRED   CURRENT   READY   AGE
+replicaset.apps/shop-api-5f5b49c6dd      3         3         3       155m
+replicaset.apps/shop-api-695699fbf       0         0         0       164m
+replicaset.apps/shop-api-ddbb9f87f       1         1         0       154m
+replicaset.apps/shop-worker-85bfb59f55   2         2         2       164m
+
+NAME                               READY   STATUS    RESTARTS     AGE
+pod/shop-api-5f5b49c6dd-6d2sg      1/1     Running   0            7m38s
+pod/shop-api-5f5b49c6dd-d256t      1/1     Running   0            7m47s
+pod/shop-api-5f5b49c6dd-vq2d8      1/1     Running   0            7m29s
+pod/shop-api-ddbb9f87f-jjfhs       0/1     Running   3 (6s ago)   2m1s
+pod/shop-db-1                      1/1     Running   0            14m
+pod/shop-worker-85bfb59f55-d7z9g   1/1     Running   0            144m
+pod/shop-worker-85bfb59f55-k5qhf   1/1     Running   0            144m
+LAST SEEN   TYPE      REASON      OBJECT                         MESSAGE
+2m1s        Normal    Scheduled   pod/shop-api-ddbb9f87f-jjfhs   Successfully assigned shop/shop-api-ddbb9f87f-jjfhs to lab3-worker
+91s         Warning   Unhealthy   pod/shop-api-ddbb9f87f-jjfhs   Liveness probe failed: HTTP probe failed with statuscode: 503
+85s         Warning   Unhealthy   pod/shop-api-ddbb9f87f-jjfhs   Readiness probe failed: Get "http://10.244.1.47:8000/health": dial tcp 10.244.1.47:8000: connect: connection refused
+83s         Warning   Unhealthy   pod/shop-api-ddbb9f87f-jjfhs   Startup probe failed: Get "http://10.244.1.47:8000/version": dial tcp 10.244.1.47:8000: connect: connection refused
+77s         Warning   Unhealthy   pod/shop-api-ddbb9f87f-jjfhs   Readiness probe failed: HTTP probe failed with statuscode: 503
+11s         Normal    Killing     pod/shop-api-ddbb9f87f-jjfhs   Container api failed liveness probe, will be restarted
+6s          Normal    Pulled      pod/shop-api-ddbb9f87f-jjfhs   Container image "registry.local/shop/app:1.1.0" already present on machine
+6s          Normal    Created     pod/shop-api-ddbb9f87f-jjfhs   Created container: api
+6s          Normal    Started     pod/shop-api-ddbb9f87f-jjfhs   Started container api
+PASS: failed rollout, old replicas remain available.
+Rollback was a success! Happy Helming!
+{"successful_requests": 1191, "failed_requests": 0}
+okREVISION	UPDATED                 	STATUS    	CHART     	APP VERSION	DESCRIPTION     
+7       	Sat Oct 24 17:12:07 2026	superseded	shop-0.1.0	1.0.0      	Upgrade complete
+8       	Sat Oct 24 17:14:09 2026	superseded	shop-0.1.0	1.0.0      	Rollback to 6   
+9       	Sat Oct 24 17:20:33 2026	superseded	shop-0.1.0	1.0.0      	Upgrade complete
+10      	Sat Oct 24 17:24:41 2026	superseded	shop-0.1.0	1.0.0      	Upgrade complete
+11      	Sat Oct 24 19:32:41 2026	superseded	shop-0.1.0	1.0.0      	Upgrade complete
+12      	Sat Oct 24 19:32:51 2026	superseded	shop-0.1.0	1.0.0      	Upgrade complete
+13      	Sat Oct 24 19:37:27 2026	superseded	shop-0.1.0	1.0.0      	Upgrade complete
+14      	Sat Oct 24 19:39:04 2026	superseded	shop-0.1.0	1.0.0      	Upgrade complete
+15      	Sat Oct 24 19:44:50 2026	superseded	shop-0.1.0	1.0.0      	Upgrade complete
+16      	Sat Oct 24 19:46:52 2026	deployed  	shop-0.1.0	1.0.0      	Rollback to 14  
+PASS: broken rollout blocked; manual rollback restored the deployment.

@@ -1,0 +1,31 @@
+2026-10-24T17:08:29+03:00
+NAME                 STATUS   ROLES           AGE   VERSION
+lab3-control-plane   Ready    control-plane   35m   v1.32.2
+lab3-worker          Ready    <none>          35m   v1.32.2
+NAME                               READY   STATUS        RESTARTS      AGE
+pod/shop-api-695699fbf-7mqwn       1/1     Running       2 (73s ago)   6m13s
+pod/shop-api-695699fbf-vrtgm       1/1     Running       2 (73s ago)   6m13s
+pod/shop-api-695699fbf-zmlwb       1/1     Running       2 (73s ago)   6m13s
+pod/shop-db-1                      1/1     Running       0             44s
+pod/shop-db-1-initdb-gbzrd         0/1     Terminating   0             6m13s
+pod/shop-worker-85bfb59f55-q4dfg   1/1     Running       2 (73s ago)   6m13s
+pod/shop-worker-85bfb59f55-v2n5s   1/1     Running       2 (73s ago)   6m13s
+
+NAME                  TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+service/shop-api      NodePort    10.96.27.36     <none>        8000:30080/TCP   6m13s
+service/shop-db-r     ClusterIP   10.96.174.204   <none>        5432/TCP         6m13s
+service/shop-db-ro    ClusterIP   10.96.138.40    <none>        5432/TCP         6m13s
+service/shop-db-rw    ClusterIP   10.96.11.25     <none>        5432/TCP         6m13s
+service/shop-worker   NodePort    10.96.188.127   <none>        8000:30081/TCP   6m13s
+
+NAME                                 AGE     INSTANCES   READY   STATUS                     PRIMARY
+cluster.postgresql.cnpg.io/shop-db   6m13s   1           1       Cluster in healthy state   shop-db-1
+NAME                 	NAMESPACE  	REVISION	UPDATED                                	STATUS  	CHART                       	APP VERSION
+cnpg                 	cnpg-system	2       	2026-10-24 16:58:56.638300201 +0300 MSK	deployed	cloudnative-pg-0.23.2       	1.25.1     
+kube-prometheus-stack	monitoring 	2       	2026-10-24 16:58:25.389843921 +0300 MSK	deployed	kube-prometheus-stack-69.8.2	v0.80.1    
+kyverno              	kyverno    	3       	2026-10-24 17:01:27.275082827 +0300 MSK	deployed	kyverno-3.4.4               	v1.14.4    
+shop                 	shop       	1       	2026-10-24 17:02:15.83885266 +0300 MSK 	deployed	shop-0.1.0                  	1.0.0      
+Version: {'version': '1.0.0', 'role': 'api', 'pod': 'shop-api-695699fbf-zmlwb'}
+New order IDs: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+Workers that processed these orders: ['shop-worker-85bfb59f55-q4dfg', 'shop-worker-85bfb59f55-v2n5s']
+PASS: 20 concurrent orders persisted and processed; invalid quantity rejected; both health and metrics endpoints work.
