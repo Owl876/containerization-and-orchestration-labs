@@ -1,0 +1,35 @@
+api:
+  replicas: 3
+  image:
+    repository: registry.local/shop/app
+    tag: "1.0.0"
+    pullPolicy: Never
+  healthFail: false
+  nodePort: 30080
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 300m, memory: 192Mi}
+worker:
+  replicas: 2
+  image:
+    repository: registry.local/shop/app
+    tag: "1.0.0"
+    pullPolicy: Never
+  healthFail: false
+  pollSeconds: 1
+  nodePort: 30081
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 300m, memory: 192Mi}
+postgres:
+  instances: 1
+  image: ghcr.io/cloudnative-pg/postgresql:17.4
+  storage: 1Gi
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+monitoring:
+  enabled: true
+  release: kube-prometheus-stack
+  interval: 15s
+  alertFor: 1m

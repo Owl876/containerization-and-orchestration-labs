@@ -1,0 +1,29 @@
+2026-10-24T17:23:10+03:00
+deployment "shop-api" successfully rolled out
+deployment "shop-worker" successfully rolled out
+cluster.postgresql.cnpg.io/shop-db condition met
+NAME                               READY   STATUS    RESTARTS   AGE
+pod/shop-api-5f5b49c6dd-2rccr      1/1     Running   0          11m
+pod/shop-api-5f5b49c6dd-7sphf      1/1     Running   0          11m
+pod/shop-api-5f5b49c6dd-89jdh      1/1     Running   0          11m
+pod/shop-db-1                      1/1     Running   0          12m
+pod/shop-worker-85bfb59f55-d7z9g   1/1     Running   0          48s
+pod/shop-worker-85bfb59f55-k5qhf   1/1     Running   0          48s
+
+NAME                                 AGE   INSTANCES   READY   STATUS                     PRIMARY
+cluster.postgresql.cnpg.io/shop-db   20m   1           1       Cluster in healthy state   shop-db-1
+NAME                       ADMISSION   BACKGROUND   READY   AGE   MESSAGE
+disallow-host-namespaces   true        true         True    21m   Ready
+disallow-privileged        true        true         True    21m   Ready
+require-labels             true        true         True    21m   Ready
+require-resources          true        true         True    21m   Ready
+trusted-images             true        true         True    21m   Ready
+NAME                 	NAMESPACE  	REVISION	UPDATED                                	STATUS  	CHART                       	APP VERSION
+cnpg                 	cnpg-system	2       	2026-10-24 16:58:56.638300201 +0300 MSK	deployed	cloudnative-pg-0.23.2       	1.25.1     
+kube-prometheus-stack	monitoring 	2       	2026-10-24 16:58:25.389843921 +0300 MSK	deployed	kube-prometheus-stack-69.8.2	v0.80.1    
+kyverno              	kyverno    	3       	2026-10-24 17:01:27.275082827 +0300 MSK	deployed	kyverno-3.4.4               	v1.14.4    
+shop                 	shop       	9       	2026-10-24 17:20:33.792611587 +0300 MSK	deployed	shop-0.1.0                  	1.0.0      
+Processed orders in PostgreSQL: 32
+Prometheus: 5 healthy Shop targets; 3 valid, inactive Shop alerts
+Grafana: Shop — Lab 3 8 panels
+PASS: all workloads healthy; API 1.1.0; orders persisted; monitoring restored after experiments.

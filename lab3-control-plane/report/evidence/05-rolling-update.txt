@@ -1,0 +1,18 @@
+2026-10-24T19:39:04+03:00
+Release "shop" has been upgraded. Happy Helming!
+NAME: shop
+LAST DEPLOYED: Sat Oct 24 19:39:04 2026
+NAMESPACE: shop
+STATUS: deployed
+REVISION: 14
+TEST SUITE: None
+Waiting for deployment "shop-api" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "shop-api" rollout to finish: 1 old replicas are pending termination...
+deployment "shop-api" successfully rolled out
+{"version":"1.1.0","role":"api","pod":"shop-api-5f5b49c6dd-d256t"}{"successful_requests": 272, "failed_requests": 0}
+NAME                        READY   STATUS        RESTARTS   AGE
+shop-api-5f5b49c6dd-6d2sg   1/1     Running       0          18s
+shop-api-5f5b49c6dd-d256t   1/1     Running       0          27s
+shop-api-5f5b49c6dd-vq2d8   1/1     Running       0          9s
+shop-api-695699fbf-zcssb    1/1     Terminating   0          2m5s
+PASS: rolling update finished without failed health requests.
