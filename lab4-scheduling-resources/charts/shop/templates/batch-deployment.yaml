@@ -24,5 +24,7 @@ spec:
               value: {{ .Values.batch.cpuWorkers | quote }}
             - name: MEMORY_MB
               value: {{ .Values.batch.memoryMb | quote }}
+            - name: GROW_MB_PER_SEC
+              value: {{ .Values.batch.growMbPerSec | quote }}
           resources:
             {{- toYaml .Values.batch.resources | nindent 12 }}

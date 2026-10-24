@@ -74,7 +74,9 @@
           "custom": {
             "thresholdsStyle": {
               "mode": "line"
-            }
+            },
+            "axisSoftMin": 0,
+            "axisSoftMax": 0.35
           },
           "thresholds": {
             "mode": "absolute",
@@ -129,7 +131,11 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit"
+          "unit": "percentunit",
+          "custom": {
+            "axisSoftMin": 0,
+            "axisSoftMax": 0.05
+          }
         },
         "overrides": []
       },
@@ -140,7 +146,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_requests_total{path=\"/orders\",method=\"POST\",status=~\"5..\"}[$__rate_interval])) / sum(rate(http_requests_total{path=\"/orders\",method=\"POST\"}[$__rate_interval]))",
+          "expr": "(sum(rate(http_requests_total{path=\"/orders\",method=\"POST\",status=~\"5..\"}[$__rate_interval])) / sum(rate(http_requests_total{path=\"/orders\",method=\"POST\"}[$__rate_interval]))) or vector(0)",
           "legendFormat": "5xx"
         }
       ]

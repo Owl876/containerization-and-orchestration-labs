@@ -15,6 +15,16 @@ serviceMonitor:
 grafanaDashboard:
   enabled: true
 
+# Алерты (часть 9): SLA по задержке, доля 5xx и давление по памяти на ноде.
+# Пороги SLA совпадают с формулировкой из части 8: p95 < 300 мс, 5xx < 1%.
+prometheusRule:
+  enabled: true
+  latencyP95Seconds: 0.3
+  latencyFor: 2m
+  errorRatio: 0.01
+  errorsFor: 2m
+  memoryPressureFor: 30s
+
 # Приоритеты (часть 5). critical — выше всего пользовательского, batch — ниже дефолтного 0,
 # которым живёт, например, мониторинг (так batch вытесняется раньше него).
 priority:
@@ -80,13 +90,17 @@ batch:
   replicaCount: 2
   cpuWorkers: 1
   memoryMb: 100
+  # 0 — занять всё сразу; >0 — набирать память со скоростью МиБ/сек (часть 7: давление на ноду должно расти плавно)
+  growMbPerSec: 0
+  # requests заметно ниже limits (Burstable) и достаточно крупные, чтобы кластер из двух нод
+  # по 3 CPU / 5 ГБ (setup/04-tight-cluster.sh) заполнялся за считанные реплики (часть 6)
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
+      cpu: 500m
+      memory: 1Gi
     limits:
-      cpu: 200m
-      memory: 256Mi
+      cpu: "1"
+      memory: 1536Mi
 
 postgresql:
   enabled: true

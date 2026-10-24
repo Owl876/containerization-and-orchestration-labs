@@ -1,0 +1,10 @@
+# Часть 7Б: несколько batch плавно "текут" до 1400Mi (под limit 1536Mi), нода упирается в порог eviction.
+# requests по памяти снижены до 512Mi, чтобы batch превысил их раньше, чем нода дойдёт до порога
+# (kubelet сначала смотрит на "потребление выше requests", и только потом на приоритет)
+batch:
+  replicaCount: 5
+  memoryMb: 1400
+  growMbPerSec: 10
+  resources:
+    requests:
+      memory: 512Mi
