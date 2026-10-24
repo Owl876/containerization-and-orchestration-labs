@@ -8,6 +8,7 @@
 | --- | --- |
 | 1 — Свой Docker | [lab1-containerization](lab1-containerization/README.md) |
 | 2 — Observability | [lab2-observability](lab2-observability/README-lab.md) |
+| 3 - Control Plane | [lab3-control-plane](lab3-control-plane/README.md)|
 
 <img src="assets/kuberpanda.png" alt="Панда-путешественница прибывает на тропический остров на грузовом судне" width="700">
 
