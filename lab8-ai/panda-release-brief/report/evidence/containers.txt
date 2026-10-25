@@ -1,0 +1,8 @@
+NAME                         IMAGE                    COMMAND                  SERVICE         CREATED         STATUS                   PORTS
+panda-lab8-agent-1           panda-lab8-app:1.0.0     "uvicorn src.agent:a…"   agent           2 minutes ago   Up 2 minutes (healthy)   127.0.0.1:18088->8080/tcp
+panda-lab8-grafana-1         grafana/grafana:12.1.1   "/run.sh"                grafana         2 minutes ago   Up 2 minutes             127.0.0.1:13008->3000/tcp
+panda-lab8-knowledge-mcp-1   panda-lab8-app:1.0.0     "python -m src.knowl…"   knowledge-mcp   2 minutes ago   Up 2 minutes (healthy)   
+panda-lab8-n8n-1             n8nio/n8n:2.29.1         "tini -- /docker-ent…"   n8n             21 hours ago    Up 2 minutes (healthy)   127.0.0.1:15678->5678/tcp
+panda-lab8-ollama-1          ollama/ollama:0.40.11    "/bin/ollama serve"      ollama          21 hours ago    Up 3 hours (healthy)     11434/tcp
+panda-lab8-prometheus-1      prom/prometheus:v3.5.0   "/bin/prometheus --c…"   prometheus      2 minutes ago   Up 2 minutes             127.0.0.1:19098->9090/tcp
+panda-lab8-release-mcp-1     panda-lab8-app:1.0.0     "python -m src.relea…"   release-mcp     2 minutes ago   Up 2 minutes (healthy)   

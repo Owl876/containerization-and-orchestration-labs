@@ -1,0 +1,110 @@
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 4369.0
+python_gc_objects_collected_total{generation="1"} 984.0
+python_gc_objects_collected_total{generation="2"} 26.0
+# HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
+# TYPE python_gc_objects_uncollectable_total counter
+python_gc_objects_uncollectable_total{generation="0"} 0.0
+python_gc_objects_uncollectable_total{generation="1"} 0.0
+python_gc_objects_uncollectable_total{generation="2"} 0.0
+# HELP python_gc_collections_total Number of times this generation was collected
+# TYPE python_gc_collections_total counter
+python_gc_collections_total{generation="0"} 169.0
+python_gc_collections_total{generation="1"} 15.0
+python_gc_collections_total{generation="2"} 1.0
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation="CPython",major="3",minor="12",patchlevel="10",version="3.12.10"} 1.0
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 2.25067008e+08
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 6.6363392e+07
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.79295015602e+09
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 1.3299999999999998
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 13.0
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 1.048576e+06
+# HELP panda_workflow_runs_total Agent runs, including rejected requests
+# TYPE panda_workflow_runs_total counter
+panda_workflow_runs_total{status="success"} 2.0
+panda_workflow_runs_total{status="error"} 0.0
+panda_workflow_runs_total{status="rejected"} 2.0
+# HELP panda_workflow_runs_created Agent runs, including rejected requests
+# TYPE panda_workflow_runs_created gauge
+panda_workflow_runs_created{status="success"} 1.7929501570192018e+09
+panda_workflow_runs_created{status="error"} 1.7929501570192091e+09
+panda_workflow_runs_created{status="rejected"} 1.7929501570192142e+09
+# HELP panda_workflow_duration_seconds Completed agent run latency
+# TYPE panda_workflow_duration_seconds histogram
+panda_workflow_duration_seconds_bucket{le="1.0"} 0.0
+panda_workflow_duration_seconds_bucket{le="5.0"} 0.0
+panda_workflow_duration_seconds_bucket{le="15.0"} 1.0
+panda_workflow_duration_seconds_bucket{le="30.0"} 1.0
+panda_workflow_duration_seconds_bucket{le="60.0"} 3.0
+panda_workflow_duration_seconds_bucket{le="120.0"} 3.0
+panda_workflow_duration_seconds_bucket{le="180.0"} 3.0
+panda_workflow_duration_seconds_bucket{le="300.0"} 3.0
+panda_workflow_duration_seconds_bucket{le="600.0"} 3.0
+panda_workflow_duration_seconds_bucket{le="+Inf"} 3.0
+panda_workflow_duration_seconds_count 3.0
+panda_workflow_duration_seconds_sum 84.58099613900049
+# HELP panda_workflow_duration_seconds_created Completed agent run latency
+# TYPE panda_workflow_duration_seconds_created gauge
+panda_workflow_duration_seconds_created 1.792950157019112e+09
+# HELP panda_mcp_tool_calls_total MCP calls by server, tool and status
+# TYPE panda_mcp_tool_calls_total counter
+panda_mcp_tool_calls_total{server="release",status="success",tool="get_release"} 2.0
+panda_mcp_tool_calls_total{server="release",status="success",tool="get_checks"} 2.0
+panda_mcp_tool_calls_total{server="knowledge",status="success",tool="read_runbook"} 2.0
+panda_mcp_tool_calls_total{server="knowledge",status="error",tool="write_report"} 1.0
+panda_mcp_tool_calls_total{server="knowledge",status="success",tool="write_report"} 2.0
+panda_mcp_tool_calls_total{server="release",status="error",tool="get_release"} 1.0
+# HELP panda_mcp_tool_calls_created MCP calls by server, tool and status
+# TYPE panda_mcp_tool_calls_created gauge
+panda_mcp_tool_calls_created{server="release",status="success",tool="get_release"} 1.7929502567166388e+09
+panda_mcp_tool_calls_created{server="release",status="success",tool="get_checks"} 1.7929502567217736e+09
+panda_mcp_tool_calls_created{server="knowledge",status="success",tool="read_runbook"} 1.7929502567290337e+09
+panda_mcp_tool_calls_created{server="knowledge",status="error",tool="write_report"} 1.7929502567290657e+09
+panda_mcp_tool_calls_created{server="knowledge",status="success",tool="write_report"} 1.792950277139644e+09
+panda_mcp_tool_calls_created{server="release",status="error",tool="get_release"} 1.7929503140826926e+09
+# HELP panda_llm_requests_total Actual Ollama requests
+# TYPE panda_llm_requests_total counter
+panda_llm_requests_total{status="success"} 5.0
+# HELP panda_llm_requests_created Actual Ollama requests
+# TYPE panda_llm_requests_created gauge
+panda_llm_requests_created{status="success"} 1.7929502567062035e+09
+# HELP panda_llm_tokens_total Tokens reported by Ollama
+# TYPE panda_llm_tokens_total counter
+panda_llm_tokens_total{kind="input"} 4310.0
+panda_llm_tokens_total{kind="output"} 944.0
+# HELP panda_llm_tokens_created Tokens reported by Ollama
+# TYPE panda_llm_tokens_created gauge
+panda_llm_tokens_created{kind="input"} 1.7929502567062945e+09
+panda_llm_tokens_created{kind="output"} 1.792950256706314e+09
+# HELP panda_dependency_up Dependency health including model availability
+# TYPE panda_dependency_up gauge
+panda_dependency_up{dependency="release"} 1.0
+panda_dependency_up{dependency="knowledge"} 1.0
+panda_dependency_up{dependency="ollama"} 1.0
+# HELP panda_workflow_inflight Currently running reviews
+# TYPE panda_workflow_inflight gauge
+panda_workflow_inflight 0.0
+# HELP panda_release_decisions_total Policy decisions, not execution errors
+# TYPE panda_release_decisions_total counter
+panda_release_decisions_total{decision="ready"} 1.0
+panda_release_decisions_total{decision="blocked"} 1.0
+# HELP panda_release_decisions_created Policy decisions, not execution errors
+# TYPE panda_release_decisions_created gauge
+panda_release_decisions_created{decision="ready"} 1.792950157019219e+09
+panda_release_decisions_created{decision="blocked"} 1.792950157019223e+09
+

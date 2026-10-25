@@ -1,0 +1,17 @@
+/usr/local/lib/python3.12/site-packages/pydantic_settings/sources/utils.py:51: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(  # noqa: B028  (called from many sources at differing depths, so no stacklevel is correct)
+test_authoritative_decision_survives_model_optimism (test_policy.PolicyTests.test_authoritative_decision_survives_model_optimism) ... ok
+test_failed_pending_and_unknown_values_block (test_policy.PolicyTests.test_failed_pending_and_unknown_values_block) ... ok
+test_invalid_requests_never_reach_model (test_policy.PolicyTests.test_invalid_requests_never_reach_model) ... HTTP Request: POST http://testserver/runs "HTTP/1.1 422 Unprocessable Entity"
+HTTP Request: POST http://testserver/runs "HTTP/1.1 422 Unprocessable Entity"
+HTTP Request: POST http://testserver/runs "HTTP/1.1 422 Unprocessable Entity"
+ok
+test_missing_rollback_blocks (test_policy.PolicyTests.test_missing_rollback_blocks) ... ok
+test_ready_only_when_all_requirements_met (test_policy.PolicyTests.test_ready_only_when_all_requirements_met) ... ok
+test_report_path_rejects_traversal (test_policy.PolicyTests.test_report_path_rejects_traversal) ... ok
+test_unknown_release_status_survives_mcp_task_groups (test_policy.PolicyTests.test_unknown_release_status_survives_mcp_task_groups) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.013s
+
+OK
