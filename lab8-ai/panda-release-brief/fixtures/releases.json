@@ -1,0 +1,38 @@
+{
+  "1.1.0": {
+    "release_id": "1.1.0",
+    "service": "pandarecovery",
+    "owner": "platform-team",
+    "commit": "7ad8b12",
+    "changes": [
+      {"id": "PR-41", "title": "Retry transient worker failures with bounded exponential backoff", "risk": "Queue processing latency may increase"},
+      {"id": "PR-42", "title": "Add PostgreSQL index on pending recovery jobs", "risk": "CREATE INDEX CONCURRENTLY is backward compatible"}
+    ],
+    "rollback": "Deploy app:1.0.0; the additive index is compatible with both versions.",
+    "checks": {
+      "pipeline": "passed",
+      "tests": "passed",
+      "image_scan": "passed",
+      "staging_smoke": "passed",
+      "approval": "approved"
+    }
+  },
+  "1.2.0": {
+    "release_id": "1.2.0",
+    "service": "pandarecovery",
+    "owner": "platform-team",
+    "commit": "9bc3a27",
+    "changes": [
+      {"id": "PR-51", "title": "Drop legacy jobs.payload column and use payload_v2", "risk": "Destructive schema migration; app:1.1.0 still reads payload"},
+      {"id": "PR-52", "title": "Upgrade worker base image", "risk": "Critical vulnerability found in image scan"}
+    ],
+    "rollback": "",
+    "checks": {
+      "pipeline": "failed",
+      "tests": "passed",
+      "image_scan": "failed",
+      "staging_smoke": "failed",
+      "approval": "pending"
+    }
+  }
+}

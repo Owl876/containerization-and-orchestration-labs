@@ -1,0 +1,6 @@
+{
+  "status": 429,
+  "body": {
+    "detail": "One review at a time; retry after the current run"
+  }
+}
