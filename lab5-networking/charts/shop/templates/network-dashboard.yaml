@@ -1,0 +1,12 @@
+{{- if .Values.externalHubble.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shop-lab5-network-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  lab5-network.json: |
+{{ .Files.Get "dashboards/lab5-network.json" | indent 4 }}
+{{- end }}

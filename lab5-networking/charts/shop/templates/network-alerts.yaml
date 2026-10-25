@@ -1,0 +1,42 @@
+{{- if .Values.externalHubble.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: shop-lab5-network
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+  - name: shop.lab5.network
+    rules:
+    - alert: Lab5PolicyDenied
+      expr: sum(increase(hubble_drop_total{job="lab5-hubble",source_namespace="shop",reason="POLICY_DENIED"}[2m]))
+        > 10
+      for: 30s
+      labels:
+        severity: warning
+        lab: lab5
+      annotations:
+        summary: Repeated policy-denied traffic from shop; inspect Hubble sources
+          and destinations.
+    - alert: Lab5TcpResets
+      expr: sum(increase(hubble_tcp_flags_total{job="lab5-hubble",destination_namespace="shop",flag="RST"}[2m]))
+        > 20
+      for: 30s
+      labels:
+        severity: warning
+        lab: lab5
+      annotations:
+        summary: Elevated observed TCP resets toward shop; correlate with request
+          errors.
+    - alert: Lab5DnsErrors
+      expr: sum(increase(hubble_dns_responses_total{job="lab5-hubble",destination_namespace="shop",rcode!="No
+        Error"}[2m])) > 5
+      for: 30s
+      labels:
+        severity: warning
+        lab: lab5
+      annotations:
+        summary: DNS error responses toward shop; inspect names and response codes.
+{{- end }}

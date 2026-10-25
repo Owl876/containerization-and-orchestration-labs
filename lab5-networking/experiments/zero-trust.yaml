@@ -1,0 +1,3 @@
+# Enable the access matrix defined in charts/shop/values.yaml.
+networkPolicy:
+  enabled: true

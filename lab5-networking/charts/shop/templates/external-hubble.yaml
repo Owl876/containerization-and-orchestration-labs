@@ -1,0 +1,53 @@
+{{- if .Values.externalHubble.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-lab5-hubble
+  namespace: {{ .Values.externalHubble.namespace }}
+  labels:
+    app: shop-lab5-hubble
+spec:
+  ports:
+    - name: metrics
+      port: {{ .Values.externalHubble.port }}
+      targetPort: {{ .Values.externalHubble.port }}
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: shop-lab5-hubble
+  namespace: {{ .Values.externalHubble.namespace }}
+subsets:
+  - addresses:
+      {{- range .Values.externalHubble.addresses }}
+      - ip: {{ . | quote }}
+      {{- end }}
+    ports:
+      - name: metrics
+        port: {{ .Values.externalHubble.port }}
+        protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: shop-lab5-hubble
+  namespace: {{ .Values.externalHubble.namespace }}
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.externalHubble.namespace }}
+  selector:
+    matchLabels:
+      app: shop-lab5-hubble
+  endpoints:
+    - port: metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      relabelings:
+        - targetLabel: cluster
+          replacement: kind-lab5
+        - targetLabel: job
+          replacement: lab5-hubble
+{{- end }}

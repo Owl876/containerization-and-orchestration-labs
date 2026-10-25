@@ -1,0 +1,202 @@
+api:
+  replicas: 3
+  image:
+    repository: registry.local/shop/app
+    tag: "1.0.0"
+    pullPolicy: Never
+  healthFail: false
+  nodePort: 30080
+  # Keep the source address visible for the NodePort ingress policy.
+  externalTrafficPolicy: Local
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 300m, memory: 192Mi}
+worker:
+  replicas: 2
+  image:
+    repository: registry.local/shop/app
+    tag: "1.0.0"
+    pullPolicy: Never
+  healthFail: false
+  pollSeconds: 1
+  nodePort: 30081
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 300m, memory: 192Mi}
+postgres:
+  instances: 1
+  image: ghcr.io/cloudnative-pg/postgresql:17.4
+  storage: 1Gi
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+monitoring:
+  enabled: true
+  release: kube-prometheus-stack
+  interval: 15s
+  alertFor: 1m
+
+# Observed lab5 addresses/selectors. Update after recreating the cluster.
+networkPolicy:
+  enabled: false
+  policies:
+  - name: default-deny
+    spec:
+      podSelector: {}
+      policyTypes:
+      - Ingress
+      - Egress
+  - name: dns
+    spec:
+      podSelector: {}
+      policyTypes:
+      - Egress
+      egress:
+      - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+        ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+  - name: client
+    spec:
+      podSelector:
+        matchLabels: &id002
+          app: panda-client
+      policyTypes:
+      - Egress
+      egress:
+      - to:
+        - podSelector:
+            matchLabels: &id001
+              app.kubernetes.io/instance: shop
+              app.kubernetes.io/name: api
+        ports:
+        - port: 8000
+          protocol: TCP
+  - name: api
+    spec:
+      podSelector:
+        matchLabels: *id001
+      policyTypes:
+      - Ingress
+      - Egress
+      ingress:
+      - from:
+        - podSelector:
+            matchLabels: *id002
+        ports:
+        - port: 8000
+          protocol: TCP
+      egress:
+      - to:
+        - podSelector:
+            matchLabels: &id003
+              cnpg.io/cluster: shop-db
+        ports:
+        - port: 5432
+          protocol: TCP
+  - name: worker
+    spec:
+      podSelector:
+        matchLabels: &id004
+          app.kubernetes.io/instance: shop
+          app.kubernetes.io/name: worker
+      policyTypes:
+      - Egress
+      egress:
+      - to:
+        - podSelector:
+            matchLabels: *id003
+        ports:
+        - port: 5432
+          protocol: TCP
+  - name: database
+    spec:
+      podSelector:
+        matchLabels: *id003
+      policyTypes:
+      - Ingress
+      - Egress
+      ingress:
+      - from:
+        - podSelector:
+            matchLabels: *id001
+        - podSelector:
+            matchLabels: *id004
+        - podSelector:
+            matchLabels: *id003
+        ports:
+        - port: 5432
+          protocol: TCP
+      - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: cloudnative-pg
+              app.kubernetes.io/instance: cnpg
+        ports:
+        - port: 8000
+          protocol: TCP
+      egress:
+      - to:
+        - podSelector:
+            matchLabels: *id003
+        ports:
+        - port: 5432
+          protocol: TCP
+        - port: 8000
+          protocol: TCP
+      - to:
+        - ipBlock:
+            cidr: 10.96.0.1/32
+        ports:
+        - port: 443
+          protocol: TCP
+      - to:
+        - ipBlock:
+            cidr: 172.18.0.3/32
+        ports:
+        - port: 6443
+          protocol: TCP
+
+  - name: nodeport-entry
+    spec:
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: shop
+          app.kubernetes.io/name: api
+      policyTypes:
+      - Ingress
+      ingress:
+      - from:
+        - ipBlock:
+            cidr: 172.18.0.1/32
+        ports:
+        - port: 8000
+          protocol: TCP
+
+# Render this template for the existing monitoring cluster, not kind-lab5.
+externalHubble:
+  enabled: false
+  namespace: monitoring
+  port: 9965
+  addresses:
+    - 172.18.0.2
+    - 172.18.0.3
+    - 172.18.0.4
+
+dnsVisibility:
+  enabled: true
+  namespace: kube-system
+  labels:
+    k8s:k8s-app: kube-dns
+  port: "53"

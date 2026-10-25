@@ -1,0 +1,2460 @@
+[
+  {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "creationTimestamp": "2026-10-25T20:01:03Z",
+      "deletionGracePeriodSeconds": 30,
+      "deletionTimestamp": "2026-10-25T20:02:07Z",
+      "labels": {
+        "app": "panda-camera"
+      },
+      "name": "panda-camera-1792958461",
+      "namespace": "shop",
+      "resourceVersion": "18527",
+      "uid": "10af69ad-2464-40d3-9352-a6b508fba2f3"
+    },
+    "spec": {
+      "containers": [
+        {
+          "command": [
+            "python",
+            "-c",
+            "import time; time.sleep(900)"
+          ],
+          "image": "registry.local/shop/app:1.0.0",
+          "imagePullPolicy": "Never",
+          "name": "panda-camera-1792958461",
+          "resources": {},
+          "terminationMessagePath": "/dev/termination-log",
+          "terminationMessagePolicy": "File",
+          "volumeMounts": [
+            {
+              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+              "name": "kube-api-access-gjmx7",
+              "readOnly": true
+            }
+          ]
+        }
+      ],
+      "dnsPolicy": "ClusterFirst",
+      "enableServiceLinks": true,
+      "nodeName": "lab5-worker2",
+      "preemptionPolicy": "PreemptLowerPriority",
+      "priority": 0,
+      "restartPolicy": "Never",
+      "schedulerName": "default-scheduler",
+      "securityContext": {},
+      "serviceAccount": "default",
+      "serviceAccountName": "default",
+      "terminationGracePeriodSeconds": 30,
+      "tolerations": [
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/not-ready",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        },
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/unreachable",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        }
+      ],
+      "volumes": [
+        {
+          "name": "kube-api-access-gjmx7",
+          "projected": {
+            "defaultMode": 420,
+            "sources": [
+              {
+                "serviceAccountToken": {
+                  "expirationSeconds": 3607,
+                  "path": "token"
+                }
+              },
+              {
+                "configMap": {
+                  "items": [
+                    {
+                      "key": "ca.crt",
+                      "path": "ca.crt"
+                    }
+                  ],
+                  "name": "kube-root-ca.crt"
+                }
+              },
+              {
+                "downwardAPI": {
+                  "items": [
+                    {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "metadata.namespace"
+                      },
+                      "path": "namespace"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:03Z",
+          "status": "True",
+          "type": "PodReadyToStartContainers"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:03Z",
+          "status": "True",
+          "type": "Initialized"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:03Z",
+          "status": "True",
+          "type": "Ready"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:03Z",
+          "status": "True",
+          "type": "ContainersReady"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:03Z",
+          "status": "True",
+          "type": "PodScheduled"
+        }
+      ],
+      "containerStatuses": [
+        {
+          "containerID": "containerd://0da3252b1d41d05c88fc42b0455d5390f1f975f74c791bf167af818359d12618",
+          "image": "registry.local/shop/app:1.0.0",
+          "imageID": "sha256:2c9f52d451a0e6b6d381a43f512bca3a416cecb4a8a83156d4ed2218ccf35326",
+          "lastState": {},
+          "name": "panda-camera-1792958461",
+          "ready": true,
+          "restartCount": 0,
+          "started": true,
+          "state": {
+            "running": {
+              "startedAt": "2026-10-25T20:01:03Z"
+            }
+          },
+          "volumeMounts": [
+            {
+              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+              "name": "kube-api-access-gjmx7",
+              "readOnly": true,
+              "recursiveReadOnly": "Disabled"
+            }
+          ]
+        }
+      ],
+      "hostIP": "172.18.0.4",
+      "hostIPs": [
+        {
+          "ip": "172.18.0.4"
+        }
+      ],
+      "phase": "Running",
+      "podIP": "10.244.2.35",
+      "podIPs": [
+        {
+          "ip": "10.244.2.35"
+        }
+      ],
+      "qosClass": "BestEffort",
+      "startTime": "2026-10-25T20:01:03Z"
+    }
+  },
+  {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "creationTimestamp": "2026-10-25T20:01:39Z",
+      "labels": {
+        "app": "panda-camera"
+      },
+      "name": "panda-camera-1792958497",
+      "namespace": "shop",
+      "resourceVersion": "18555",
+      "uid": "b3760851-d6a6-4b57-b9cf-e047d7ef7ae4"
+    },
+    "spec": {
+      "containers": [
+        {
+          "command": [
+            "python",
+            "-c",
+            "import time; time.sleep(900)"
+          ],
+          "image": "registry.local/shop/app:1.0.0",
+          "imagePullPolicy": "Never",
+          "name": "panda-camera-1792958497",
+          "resources": {},
+          "terminationMessagePath": "/dev/termination-log",
+          "terminationMessagePolicy": "File",
+          "volumeMounts": [
+            {
+              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+              "name": "kube-api-access-dtdvl",
+              "readOnly": true
+            }
+          ]
+        }
+      ],
+      "dnsPolicy": "ClusterFirst",
+      "enableServiceLinks": true,
+      "nodeName": "lab5-worker",
+      "preemptionPolicy": "PreemptLowerPriority",
+      "priority": 0,
+      "restartPolicy": "Never",
+      "schedulerName": "default-scheduler",
+      "securityContext": {},
+      "serviceAccount": "default",
+      "serviceAccountName": "default",
+      "terminationGracePeriodSeconds": 30,
+      "tolerations": [
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/not-ready",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        },
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/unreachable",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        }
+      ],
+      "volumes": [
+        {
+          "name": "kube-api-access-dtdvl",
+          "projected": {
+            "defaultMode": 420,
+            "sources": [
+              {
+                "serviceAccountToken": {
+                  "expirationSeconds": 3607,
+                  "path": "token"
+                }
+              },
+              {
+                "configMap": {
+                  "items": [
+                    {
+                      "key": "ca.crt",
+                      "path": "ca.crt"
+                    }
+                  ],
+                  "name": "kube-root-ca.crt"
+                }
+              },
+              {
+                "downwardAPI": {
+                  "items": [
+                    {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "metadata.namespace"
+                      },
+                      "path": "namespace"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:41Z",
+          "status": "True",
+          "type": "PodReadyToStartContainers"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:39Z",
+          "status": "True",
+          "type": "Initialized"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:41Z",
+          "status": "True",
+          "type": "Ready"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:41Z",
+          "status": "True",
+          "type": "ContainersReady"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:39Z",
+          "status": "True",
+          "type": "PodScheduled"
+        }
+      ],
+      "containerStatuses": [
+        {
+          "containerID": "containerd://1acbce55862748f05f4313577e630ef219fc7e061217f51b717ae5e91e9f02bb",
+          "image": "registry.local/shop/app:1.0.0",
+          "imageID": "sha256:2c9f52d451a0e6b6d381a43f512bca3a416cecb4a8a83156d4ed2218ccf35326",
+          "lastState": {},
+          "name": "panda-camera-1792958497",
+          "ready": true,
+          "restartCount": 0,
+          "started": true,
+          "state": {
+            "running": {
+              "startedAt": "2026-10-25T20:01:40Z"
+            }
+          },
+          "volumeMounts": [
+            {
+              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+              "name": "kube-api-access-dtdvl",
+              "readOnly": true,
+              "recursiveReadOnly": "Disabled"
+            }
+          ]
+        }
+      ],
+      "hostIP": "172.18.0.2",
+      "hostIPs": [
+        {
+          "ip": "172.18.0.2"
+        }
+      ],
+      "phase": "Running",
+      "podIP": "10.244.1.200",
+      "podIPs": [
+        {
+          "ip": "10.244.1.200"
+        }
+      ],
+      "qosClass": "BestEffort",
+      "startTime": "2026-10-25T20:01:39Z"
+    }
+  },
+  {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "creationTimestamp": "2026-10-25T20:01:01Z",
+      "deletionGracePeriodSeconds": 30,
+      "deletionTimestamp": "2026-10-25T20:02:07Z",
+      "labels": {
+        "app": "panda-client"
+      },
+      "name": "panda-client-1792958461",
+      "namespace": "shop",
+      "resourceVersion": "18525",
+      "uid": "1bb0b89b-4eb0-4a80-802d-98151e9c9222"
+    },
+    "spec": {
+      "containers": [
+        {
+          "command": [
+            "python",
+            "-c",
+            "import time; time.sleep(900)"
+          ],
+          "image": "registry.local/shop/app:1.0.0",
+          "imagePullPolicy": "Never",
+          "name": "panda-client-1792958461",
+          "resources": {},
+          "terminationMessagePath": "/dev/termination-log",
+          "terminationMessagePolicy": "File",
+          "volumeMounts": [
+            {
+              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+              "name": "kube-api-access-xbbvg",
+              "readOnly": true
+            }
+          ]
+        }
+      ],
+      "dnsPolicy": "ClusterFirst",
+      "enableServiceLinks": true,
+      "nodeName": "lab5-worker2",
+      "preemptionPolicy": "PreemptLowerPriority",
+      "priority": 0,
+      "restartPolicy": "Never",
+      "schedulerName": "default-scheduler",
+      "securityContext": {},
+      "serviceAccount": "default",
+      "serviceAccountName": "default",
+      "terminationGracePeriodSeconds": 30,
+      "tolerations": [
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/not-ready",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        },
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/unreachable",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        }
+      ],
+      "volumes": [
+        {
+          "name": "kube-api-access-xbbvg",
+          "projected": {
+            "defaultMode": 420,
+            "sources": [
+              {
+                "serviceAccountToken": {
+                  "expirationSeconds": 3607,
+                  "path": "token"
+                }
+              },
+              {
+                "configMap": {
+                  "items": [
+                    {
+                      "key": "ca.crt",
+                      "path": "ca.crt"
+                    }
+                  ],
+                  "name": "kube-root-ca.crt"
+                }
+              },
+              {
+                "downwardAPI": {
+                  "items": [
+                    {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "metadata.namespace"
+                      },
+                      "path": "namespace"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:02Z",
+          "status": "True",
+          "type": "PodReadyToStartContainers"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:01Z",
+          "status": "True",
+          "type": "Initialized"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:02Z",
+          "status": "True",
+          "type": "Ready"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:02Z",
+          "status": "True",
+          "type": "ContainersReady"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:01Z",
+          "status": "True",
+          "type": "PodScheduled"
+        }
+      ],
+      "containerStatuses": [
+        {
+          "containerID": "containerd://4a14249b0ba2635659b160c5bf4e180f902ae894bb491634a7de8ae7eb075186",
+          "image": "registry.local/shop/app:1.0.0",
+          "imageID": "sha256:2c9f52d451a0e6b6d381a43f512bca3a416cecb4a8a83156d4ed2218ccf35326",
+          "lastState": {},
+          "name": "panda-client-1792958461",
+          "ready": true,
+          "restartCount": 0,
+          "started": true,
+          "state": {
+            "running": {
+              "startedAt": "2026-10-25T20:01:02Z"
+            }
+          },
+          "volumeMounts": [
+            {
+              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+              "name": "kube-api-access-xbbvg",
+              "readOnly": true,
+              "recursiveReadOnly": "Disabled"
+            }
+          ]
+        }
+      ],
+      "hostIP": "172.18.0.4",
+      "hostIPs": [
+        {
+          "ip": "172.18.0.4"
+        }
+      ],
+      "phase": "Running",
+      "podIP": "10.244.2.188",
+      "podIPs": [
+        {
+          "ip": "10.244.2.188"
+        }
+      ],
+      "qosClass": "BestEffort",
+      "startTime": "2026-10-25T20:01:01Z"
+    }
+  },
+  {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "creationTimestamp": "2026-10-25T20:01:37Z",
+      "labels": {
+        "app": "panda-client"
+      },
+      "name": "panda-client-1792958497",
+      "namespace": "shop",
+      "resourceVersion": "18541",
+      "uid": "78000ae0-0802-43b7-96a1-ef8151ac50b6"
+    },
+    "spec": {
+      "containers": [
+        {
+          "command": [
+            "python",
+            "-c",
+            "import time; time.sleep(900)"
+          ],
+          "image": "registry.local/shop/app:1.0.0",
+          "imagePullPolicy": "Never",
+          "name": "panda-client-1792958497",
+          "resources": {},
+          "terminationMessagePath": "/dev/termination-log",
+          "terminationMessagePolicy": "File",
+          "volumeMounts": [
+            {
+              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+              "name": "kube-api-access-fdwg8",
+              "readOnly": true
+            }
+          ]
+        }
+      ],
+      "dnsPolicy": "ClusterFirst",
+      "enableServiceLinks": true,
+      "nodeName": "lab5-worker2",
+      "preemptionPolicy": "PreemptLowerPriority",
+      "priority": 0,
+      "restartPolicy": "Never",
+      "schedulerName": "default-scheduler",
+      "securityContext": {},
+      "serviceAccount": "default",
+      "serviceAccountName": "default",
+      "terminationGracePeriodSeconds": 30,
+      "tolerations": [
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/not-ready",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        },
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/unreachable",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        }
+      ],
+      "volumes": [
+        {
+          "name": "kube-api-access-fdwg8",
+          "projected": {
+            "defaultMode": 420,
+            "sources": [
+              {
+                "serviceAccountToken": {
+                  "expirationSeconds": 3607,
+                  "path": "token"
+                }
+              },
+              {
+                "configMap": {
+                  "items": [
+                    {
+                      "key": "ca.crt",
+                      "path": "ca.crt"
+                    }
+                  ],
+                  "name": "kube-root-ca.crt"
+                }
+              },
+              {
+                "downwardAPI": {
+                  "items": [
+                    {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "metadata.namespace"
+                      },
+                      "path": "namespace"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:39Z",
+          "status": "True",
+          "type": "PodReadyToStartContainers"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:37Z",
+          "status": "True",
+          "type": "Initialized"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:39Z",
+          "status": "True",
+          "type": "Ready"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:39Z",
+          "status": "True",
+          "type": "ContainersReady"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T20:01:37Z",
+          "status": "True",
+          "type": "PodScheduled"
+        }
+      ],
+      "containerStatuses": [
+        {
+          "containerID": "containerd://5bbf4bdc5f2a20dd1e8edff48d775326303c645827b1be9401685483499461d9",
+          "image": "registry.local/shop/app:1.0.0",
+          "imageID": "sha256:2c9f52d451a0e6b6d381a43f512bca3a416cecb4a8a83156d4ed2218ccf35326",
+          "lastState": {},
+          "name": "panda-client-1792958497",
+          "ready": true,
+          "restartCount": 0,
+          "started": true,
+          "state": {
+            "running": {
+              "startedAt": "2026-10-25T20:01:38Z"
+            }
+          },
+          "volumeMounts": [
+            {
+              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+              "name": "kube-api-access-fdwg8",
+              "readOnly": true,
+              "recursiveReadOnly": "Disabled"
+            }
+          ]
+        }
+      ],
+      "hostIP": "172.18.0.4",
+      "hostIPs": [
+        {
+          "ip": "172.18.0.4"
+        }
+      ],
+      "phase": "Running",
+      "podIP": "10.244.2.91",
+      "podIPs": [
+        {
+          "ip": "10.244.2.91"
+        }
+      ],
+      "qosClass": "BestEffort",
+      "startTime": "2026-10-25T20:01:37Z"
+    }
+  },
+  {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "creationTimestamp": "2026-10-25T19:29:40Z",
+      "generateName": "shop-api-695699fbf-",
+      "labels": {
+        "app": "shop",
+        "app.kubernetes.io/instance": "shop",
+        "app.kubernetes.io/managed-by": "Helm",
+        "app.kubernetes.io/name": "api",
+        "app.kubernetes.io/part-of": "shop",
+        "pod-template-hash": "695699fbf"
+      },
+      "name": "shop-api-695699fbf-7b66j",
+      "namespace": "shop",
+      "ownerReferences": [
+        {
+          "apiVersion": "apps/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "ReplicaSet",
+          "name": "shop-api-695699fbf",
+          "uid": "8d22e964-fe0b-418f-8e61-6c08dcaaa574"
+        }
+      ],
+      "resourceVersion": "13225",
+      "uid": "3fc3ef56-1dee-4dbb-bedd-bbe810e1c4ae"
+    },
+    "spec": {
+      "automountServiceAccountToken": false,
+      "containers": [
+        {
+          "env": [
+            {
+              "name": "ROLE",
+              "value": "api"
+            },
+            {
+              "name": "HEALTH_FAIL",
+              "value": "false"
+            },
+            {
+              "name": "PGHOST",
+              "value": "shop-db-rw"
+            },
+            {
+              "name": "PGDATABASE",
+              "value": "shop"
+            },
+            {
+              "name": "PGUSER",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "key": "username",
+                  "name": "shop-db-app"
+                }
+              }
+            },
+            {
+              "name": "PGPASSWORD",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "key": "password",
+                  "name": "shop-db-app"
+                }
+              }
+            }
+          ],
+          "image": "registry.local/shop/app:1.0.0",
+          "imagePullPolicy": "Never",
+          "lifecycle": {
+            "preStop": {
+              "exec": {
+                "command": [
+                  "python",
+                  "-c",
+                  "import time; time.sleep(5)"
+                ]
+              }
+            }
+          },
+          "livenessProbe": {
+            "failureThreshold": 3,
+            "httpGet": {
+              "path": "/health",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 10,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "name": "api",
+          "ports": [
+            {
+              "containerPort": 8000,
+              "name": "http",
+              "protocol": "TCP"
+            }
+          ],
+          "readinessProbe": {
+            "failureThreshold": 1,
+            "httpGet": {
+              "path": "/health",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 2,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "resources": {
+            "limits": {
+              "cpu": "300m",
+              "memory": "192Mi"
+            },
+            "requests": {
+              "cpu": "50m",
+              "memory": "64Mi"
+            }
+          },
+          "securityContext": {
+            "allowPrivilegeEscalation": false,
+            "capabilities": {
+              "drop": [
+                "ALL"
+              ]
+            },
+            "privileged": false,
+            "readOnlyRootFilesystem": true
+          },
+          "startupProbe": {
+            "failureThreshold": 60,
+            "httpGet": {
+              "path": "/version",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 2,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "terminationMessagePath": "/dev/termination-log",
+          "terminationMessagePolicy": "File"
+        }
+      ],
+      "dnsPolicy": "ClusterFirst",
+      "enableServiceLinks": true,
+      "nodeName": "lab5-worker",
+      "preemptionPolicy": "PreemptLowerPriority",
+      "priority": 0,
+      "restartPolicy": "Always",
+      "schedulerName": "default-scheduler",
+      "securityContext": {
+        "runAsGroup": 10001,
+        "runAsNonRoot": true,
+        "runAsUser": 10001,
+        "seccompProfile": {
+          "type": "RuntimeDefault"
+        }
+      },
+      "serviceAccount": "default",
+      "serviceAccountName": "default",
+      "terminationGracePeriodSeconds": 30,
+      "tolerations": [
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/not-ready",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        },
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/unreachable",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        }
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:41Z",
+          "status": "True",
+          "type": "PodReadyToStartContainers"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:40Z",
+          "status": "True",
+          "type": "Initialized"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:46Z",
+          "status": "True",
+          "type": "Ready"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:46Z",
+          "status": "True",
+          "type": "ContainersReady"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:40Z",
+          "status": "True",
+          "type": "PodScheduled"
+        }
+      ],
+      "containerStatuses": [
+        {
+          "containerID": "containerd://170f7f331e5fdf055acb9a2a9778786d1100d3967111d7d54674e7a9779f2f92",
+          "image": "registry.local/shop/app:1.0.0",
+          "imageID": "sha256:2c9f52d451a0e6b6d381a43f512bca3a416cecb4a8a83156d4ed2218ccf35326",
+          "lastState": {},
+          "name": "api",
+          "ready": true,
+          "restartCount": 0,
+          "started": true,
+          "state": {
+            "running": {
+              "startedAt": "2026-10-25T19:29:40Z"
+            }
+          }
+        }
+      ],
+      "hostIP": "172.18.0.2",
+      "hostIPs": [
+        {
+          "ip": "172.18.0.2"
+        }
+      ],
+      "phase": "Running",
+      "podIP": "10.244.1.165",
+      "podIPs": [
+        {
+          "ip": "10.244.1.165"
+        }
+      ],
+      "qosClass": "Burstable",
+      "startTime": "2026-10-25T19:29:40Z"
+    }
+  },
+  {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "creationTimestamp": "2026-10-25T19:29:06Z",
+      "generateName": "shop-api-695699fbf-",
+      "labels": {
+        "app": "shop",
+        "app.kubernetes.io/instance": "shop",
+        "app.kubernetes.io/managed-by": "Helm",
+        "app.kubernetes.io/name": "api",
+        "app.kubernetes.io/part-of": "shop",
+        "pod-template-hash": "695699fbf"
+      },
+      "name": "shop-api-695699fbf-7l9g8",
+      "namespace": "shop",
+      "ownerReferences": [
+        {
+          "apiVersion": "apps/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "ReplicaSet",
+          "name": "shop-api-695699fbf",
+          "uid": "8d22e964-fe0b-418f-8e61-6c08dcaaa574"
+        }
+      ],
+      "resourceVersion": "12994",
+      "uid": "5a3c3a3d-06e5-41da-a624-41ab19161b93"
+    },
+    "spec": {
+      "automountServiceAccountToken": false,
+      "containers": [
+        {
+          "env": [
+            {
+              "name": "ROLE",
+              "value": "api"
+            },
+            {
+              "name": "HEALTH_FAIL",
+              "value": "false"
+            },
+            {
+              "name": "PGHOST",
+              "value": "shop-db-rw"
+            },
+            {
+              "name": "PGDATABASE",
+              "value": "shop"
+            },
+            {
+              "name": "PGUSER",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "key": "username",
+                  "name": "shop-db-app"
+                }
+              }
+            },
+            {
+              "name": "PGPASSWORD",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "key": "password",
+                  "name": "shop-db-app"
+                }
+              }
+            }
+          ],
+          "image": "registry.local/shop/app:1.0.0",
+          "imagePullPolicy": "Never",
+          "lifecycle": {
+            "preStop": {
+              "exec": {
+                "command": [
+                  "python",
+                  "-c",
+                  "import time; time.sleep(5)"
+                ]
+              }
+            }
+          },
+          "livenessProbe": {
+            "failureThreshold": 3,
+            "httpGet": {
+              "path": "/health",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 10,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "name": "api",
+          "ports": [
+            {
+              "containerPort": 8000,
+              "name": "http",
+              "protocol": "TCP"
+            }
+          ],
+          "readinessProbe": {
+            "failureThreshold": 1,
+            "httpGet": {
+              "path": "/health",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 2,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "resources": {
+            "limits": {
+              "cpu": "300m",
+              "memory": "192Mi"
+            },
+            "requests": {
+              "cpu": "50m",
+              "memory": "64Mi"
+            }
+          },
+          "securityContext": {
+            "allowPrivilegeEscalation": false,
+            "capabilities": {
+              "drop": [
+                "ALL"
+              ]
+            },
+            "privileged": false,
+            "readOnlyRootFilesystem": true
+          },
+          "startupProbe": {
+            "failureThreshold": 60,
+            "httpGet": {
+              "path": "/version",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 2,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "terminationMessagePath": "/dev/termination-log",
+          "terminationMessagePolicy": "File"
+        }
+      ],
+      "dnsPolicy": "ClusterFirst",
+      "enableServiceLinks": true,
+      "nodeName": "lab5-worker2",
+      "preemptionPolicy": "PreemptLowerPriority",
+      "priority": 0,
+      "restartPolicy": "Always",
+      "schedulerName": "default-scheduler",
+      "securityContext": {
+        "runAsGroup": 10001,
+        "runAsNonRoot": true,
+        "runAsUser": 10001,
+        "seccompProfile": {
+          "type": "RuntimeDefault"
+        }
+      },
+      "serviceAccount": "default",
+      "serviceAccountName": "default",
+      "terminationGracePeriodSeconds": 30,
+      "tolerations": [
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/not-ready",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        },
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/unreachable",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        }
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:07Z",
+          "status": "True",
+          "type": "PodReadyToStartContainers"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:06Z",
+          "status": "True",
+          "type": "Initialized"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:12Z",
+          "status": "True",
+          "type": "Ready"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:12Z",
+          "status": "True",
+          "type": "ContainersReady"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:06Z",
+          "status": "True",
+          "type": "PodScheduled"
+        }
+      ],
+      "containerStatuses": [
+        {
+          "containerID": "containerd://f4d32fcc86d7b121d00fdae92f2402f9e5a6ef47cf1a2679ec51a8504838241f",
+          "image": "registry.local/shop/app:1.0.0",
+          "imageID": "sha256:2c9f52d451a0e6b6d381a43f512bca3a416cecb4a8a83156d4ed2218ccf35326",
+          "lastState": {},
+          "name": "api",
+          "ready": true,
+          "restartCount": 0,
+          "started": true,
+          "state": {
+            "running": {
+              "startedAt": "2026-10-25T19:29:07Z"
+            }
+          }
+        }
+      ],
+      "hostIP": "172.18.0.4",
+      "hostIPs": [
+        {
+          "ip": "172.18.0.4"
+        }
+      ],
+      "phase": "Running",
+      "podIP": "10.244.2.64",
+      "podIPs": [
+        {
+          "ip": "10.244.2.64"
+        }
+      ],
+      "qosClass": "Burstable",
+      "startTime": "2026-10-25T19:29:06Z"
+    }
+  },
+  {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "creationTimestamp": "2026-10-25T19:29:14Z",
+      "generateName": "shop-api-695699fbf-",
+      "labels": {
+        "app": "shop",
+        "app.kubernetes.io/instance": "shop",
+        "app.kubernetes.io/managed-by": "Helm",
+        "app.kubernetes.io/name": "api",
+        "app.kubernetes.io/part-of": "shop",
+        "pod-template-hash": "695699fbf"
+      },
+      "name": "shop-api-695699fbf-zczdp",
+      "namespace": "shop",
+      "ownerReferences": [
+        {
+          "apiVersion": "apps/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "ReplicaSet",
+          "name": "shop-api-695699fbf",
+          "uid": "8d22e964-fe0b-418f-8e61-6c08dcaaa574"
+        }
+      ],
+      "resourceVersion": "13051",
+      "uid": "5a5b7ddb-4626-404c-96db-f7ebb20048c9"
+    },
+    "spec": {
+      "automountServiceAccountToken": false,
+      "containers": [
+        {
+          "env": [
+            {
+              "name": "ROLE",
+              "value": "api"
+            },
+            {
+              "name": "HEALTH_FAIL",
+              "value": "false"
+            },
+            {
+              "name": "PGHOST",
+              "value": "shop-db-rw"
+            },
+            {
+              "name": "PGDATABASE",
+              "value": "shop"
+            },
+            {
+              "name": "PGUSER",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "key": "username",
+                  "name": "shop-db-app"
+                }
+              }
+            },
+            {
+              "name": "PGPASSWORD",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "key": "password",
+                  "name": "shop-db-app"
+                }
+              }
+            }
+          ],
+          "image": "registry.local/shop/app:1.0.0",
+          "imagePullPolicy": "Never",
+          "lifecycle": {
+            "preStop": {
+              "exec": {
+                "command": [
+                  "python",
+                  "-c",
+                  "import time; time.sleep(5)"
+                ]
+              }
+            }
+          },
+          "livenessProbe": {
+            "failureThreshold": 3,
+            "httpGet": {
+              "path": "/health",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 10,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "name": "api",
+          "ports": [
+            {
+              "containerPort": 8000,
+              "name": "http",
+              "protocol": "TCP"
+            }
+          ],
+          "readinessProbe": {
+            "failureThreshold": 1,
+            "httpGet": {
+              "path": "/health",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 2,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "resources": {
+            "limits": {
+              "cpu": "300m",
+              "memory": "192Mi"
+            },
+            "requests": {
+              "cpu": "50m",
+              "memory": "64Mi"
+            }
+          },
+          "securityContext": {
+            "allowPrivilegeEscalation": false,
+            "capabilities": {
+              "drop": [
+                "ALL"
+              ]
+            },
+            "privileged": false,
+            "readOnlyRootFilesystem": true
+          },
+          "startupProbe": {
+            "failureThreshold": 60,
+            "httpGet": {
+              "path": "/version",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 2,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "terminationMessagePath": "/dev/termination-log",
+          "terminationMessagePolicy": "File"
+        }
+      ],
+      "dnsPolicy": "ClusterFirst",
+      "enableServiceLinks": true,
+      "nodeName": "lab5-worker2",
+      "preemptionPolicy": "PreemptLowerPriority",
+      "priority": 0,
+      "restartPolicy": "Always",
+      "schedulerName": "default-scheduler",
+      "securityContext": {
+        "runAsGroup": 10001,
+        "runAsNonRoot": true,
+        "runAsUser": 10001,
+        "seccompProfile": {
+          "type": "RuntimeDefault"
+        }
+      },
+      "serviceAccount": "default",
+      "serviceAccountName": "default",
+      "terminationGracePeriodSeconds": 30,
+      "tolerations": [
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/not-ready",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        },
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/unreachable",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        }
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:16Z",
+          "status": "True",
+          "type": "PodReadyToStartContainers"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:14Z",
+          "status": "True",
+          "type": "Initialized"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:20Z",
+          "status": "True",
+          "type": "Ready"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:20Z",
+          "status": "True",
+          "type": "ContainersReady"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:14Z",
+          "status": "True",
+          "type": "PodScheduled"
+        }
+      ],
+      "containerStatuses": [
+        {
+          "containerID": "containerd://37b8a3893f535e4dc625306b1bfd980f9f843687f7edcb201524d1bb9b09647b",
+          "image": "registry.local/shop/app:1.0.0",
+          "imageID": "sha256:2c9f52d451a0e6b6d381a43f512bca3a416cecb4a8a83156d4ed2218ccf35326",
+          "lastState": {},
+          "name": "api",
+          "ready": true,
+          "restartCount": 0,
+          "started": true,
+          "state": {
+            "running": {
+              "startedAt": "2026-10-25T19:29:15Z"
+            }
+          }
+        }
+      ],
+      "hostIP": "172.18.0.4",
+      "hostIPs": [
+        {
+          "ip": "172.18.0.4"
+        }
+      ],
+      "phase": "Running",
+      "podIP": "10.244.2.99",
+      "podIPs": [
+        {
+          "ip": "10.244.2.99"
+        }
+      ],
+      "qosClass": "Burstable",
+      "startTime": "2026-10-25T19:29:14Z"
+    }
+  },
+  {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "annotations": {
+        "cnpg.io/nodeSerial": "1",
+        "cnpg.io/operatorVersion": "1.25.1",
+        "cnpg.io/podEnvHash": "6676c6d456",
+        "cnpg.io/podSpec": "{\"volumes\":[{\"name\":\"pgdata\",\"persistentVolumeClaim\":{\"claimName\":\"shop-db-1\"}},{\"name\":\"scratch-data\",\"emptyDir\":{}},{\"name\":\"shm\",\"emptyDir\":{\"medium\":\"Memory\"}}],\"initContainers\":[{\"name\":\"bootstrap-controller\",\"image\":\"ghcr.io/cloudnative-pg/cloudnative-pg:1.25.1\",\"command\":[\"/manager\",\"bootstrap\",\"/controller/manager\",\"--log-level=info\"],\"resources\":{\"limits\":{\"cpu\":\"500m\",\"memory\":\"512Mi\"},\"requests\":{\"cpu\":\"100m\",\"memory\":\"128Mi\"}},\"volumeMounts\":[{\"name\":\"pgdata\",\"mountPath\":\"/var/lib/postgresql/data\"},{\"name\":\"scratch-data\",\"mountPath\":\"/run\"},{\"name\":\"scratch-data\",\"mountPath\":\"/controller\"},{\"name\":\"shm\",\"mountPath\":\"/dev/shm\"}],\"securityContext\":{\"capabilities\":{\"drop\":[\"ALL\"]},\"privileged\":false,\"runAsNonRoot\":true,\"readOnlyRootFilesystem\":true,\"allowPrivilegeEscalation\":false,\"seccompProfile\":{\"type\":\"RuntimeDefault\"}}}],\"containers\":[{\"name\":\"postgres\",\"image\":\"ghcr.io/cloudnative-pg/postgresql:17.4\",\"command\":[\"/controller/manager\",\"instance\",\"run\",\"--status-port-tls\",\"--log-level=info\"],\"ports\":[{\"name\":\"postgresql\",\"containerPort\":5432,\"protocol\":\"TCP\"},{\"name\":\"metrics\",\"containerPort\":9187,\"protocol\":\"TCP\"},{\"name\":\"status\",\"containerPort\":8000,\"protocol\":\"TCP\"}],\"env\":[{\"name\":\"PGDATA\",\"value\":\"/var/lib/postgresql/data/pgdata\"},{\"name\":\"POD_NAME\",\"value\":\"shop-db-1\"},{\"name\":\"NAMESPACE\",\"value\":\"shop\"},{\"name\":\"CLUSTER_NAME\",\"value\":\"shop-db\"},{\"name\":\"PSQL_HISTORY\",\"value\":\"/controller/tmp/.psql_history\"},{\"name\":\"PGPORT\",\"value\":\"5432\"},{\"name\":\"PGHOST\",\"value\":\"/controller/run\"},{\"name\":\"TMPDIR\",\"value\":\"/controller/tmp\"}],\"resources\":{\"limits\":{\"cpu\":\"500m\",\"memory\":\"512Mi\"},\"requests\":{\"cpu\":\"100m\",\"memory\":\"128Mi\"}},\"volumeMounts\":[{\"name\":\"pgdata\",\"mountPath\":\"/var/lib/postgresql/data\"},{\"name\":\"scratch-data\",\"mountPath\":\"/run\"},{\"name\":\"scratch-data\",\"mountPath\":\"/controller\"},{\"name\":\"shm\",\"mountPath\":\"/dev/shm\"}],\"livenessProbe\":{\"httpGet\":{\"path\":\"/healthz\",\"port\":8000,\"scheme\":\"HTTPS\"},\"timeoutSeconds\":5,\"periodSeconds\":10},\"readinessProbe\":{\"httpGet\":{\"path\":\"/readyz\",\"port\":8000,\"scheme\":\"HTTPS\"},\"timeoutSeconds\":5,\"periodSeconds\":10},\"startupProbe\":{\"httpGet\":{\"path\":\"/healthz\",\"port\":8000,\"scheme\":\"HTTPS\"},\"timeoutSeconds\":5,\"periodSeconds\":10,\"failureThreshold\":360},\"securityContext\":{\"capabilities\":{\"drop\":[\"ALL\"]},\"privileged\":false,\"runAsNonRoot\":true,\"readOnlyRootFilesystem\":true,\"allowPrivilegeEscalation\":false,\"seccompProfile\":{\"type\":\"RuntimeDefault\"}}}],\"terminationGracePeriodSeconds\":1800,\"serviceAccountName\":\"shop-db\",\"securityContext\":{\"runAsUser\":26,\"runAsGroup\":26,\"runAsNonRoot\":true,\"fsGroup\":26,\"seccompProfile\":{\"type\":\"RuntimeDefault\"}},\"hostname\":\"shop-db-1\",\"affinity\":{\"podAntiAffinity\":{\"preferredDuringSchedulingIgnoredDuringExecution\":[{\"weight\":100,\"podAffinityTerm\":{\"labelSelector\":{\"matchExpressions\":[{\"key\":\"cnpg.io/cluster\",\"operator\":\"In\",\"values\":[\"shop-db\"]},{\"key\":\"cnpg.io/podRole\",\"operator\":\"In\",\"values\":[\"instance\"]}]},\"topologyKey\":\"kubernetes.io/hostname\"}}]}}}"
+      },
+      "creationTimestamp": "2026-10-25T19:11:13Z",
+      "labels": {
+        "app": "shop",
+        "app.kubernetes.io/instance": "shop",
+        "app.kubernetes.io/part-of": "shop",
+        "cnpg.io/cluster": "shop-db",
+        "cnpg.io/instanceName": "shop-db-1",
+        "cnpg.io/instanceRole": "primary",
+        "cnpg.io/podRole": "instance",
+        "role": "primary"
+      },
+      "name": "shop-db-1",
+      "namespace": "shop",
+      "ownerReferences": [
+        {
+          "apiVersion": "postgresql.cnpg.io/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Cluster",
+          "name": "shop-db",
+          "uid": "f161c3c4-3466-4896-80f9-ffb367a22573"
+        }
+      ],
+      "resourceVersion": "8946",
+      "uid": "64221598-7958-45ec-b8b0-5dceebf47fb9"
+    },
+    "spec": {
+      "affinity": {
+        "podAntiAffinity": {
+          "preferredDuringSchedulingIgnoredDuringExecution": [
+            {
+              "podAffinityTerm": {
+                "labelSelector": {
+                  "matchExpressions": [
+                    {
+                      "key": "cnpg.io/cluster",
+                      "operator": "In",
+                      "values": [
+                        "shop-db"
+                      ]
+                    },
+                    {
+                      "key": "cnpg.io/podRole",
+                      "operator": "In",
+                      "values": [
+                        "instance"
+                      ]
+                    }
+                  ]
+                },
+                "topologyKey": "kubernetes.io/hostname"
+              },
+              "weight": 100
+            }
+          ]
+        }
+      },
+      "containers": [
+        {
+          "command": [
+            "/controller/manager",
+            "instance",
+            "run",
+            "--status-port-tls",
+            "--log-level=info"
+          ],
+          "env": [
+            {
+              "name": "PGDATA",
+              "value": "/var/lib/postgresql/data/pgdata"
+            },
+            {
+              "name": "POD_NAME",
+              "value": "shop-db-1"
+            },
+            {
+              "name": "NAMESPACE",
+              "value": "shop"
+            },
+            {
+              "name": "CLUSTER_NAME",
+              "value": "shop-db"
+            },
+            {
+              "name": "PSQL_HISTORY",
+              "value": "/controller/tmp/.psql_history"
+            },
+            {
+              "name": "PGPORT",
+              "value": "5432"
+            },
+            {
+              "name": "PGHOST",
+              "value": "/controller/run"
+            },
+            {
+              "name": "TMPDIR",
+              "value": "/controller/tmp"
+            }
+          ],
+          "image": "ghcr.io/cloudnative-pg/postgresql:17.4",
+          "imagePullPolicy": "IfNotPresent",
+          "livenessProbe": {
+            "failureThreshold": 3,
+            "httpGet": {
+              "path": "/healthz",
+              "port": 8000,
+              "scheme": "HTTPS"
+            },
+            "periodSeconds": 10,
+            "successThreshold": 1,
+            "timeoutSeconds": 5
+          },
+          "name": "postgres",
+          "ports": [
+            {
+              "containerPort": 5432,
+              "name": "postgresql",
+              "protocol": "TCP"
+            },
+            {
+              "containerPort": 9187,
+              "name": "metrics",
+              "protocol": "TCP"
+            },
+            {
+              "containerPort": 8000,
+              "name": "status",
+              "protocol": "TCP"
+            }
+          ],
+          "readinessProbe": {
+            "failureThreshold": 3,
+            "httpGet": {
+              "path": "/readyz",
+              "port": 8000,
+              "scheme": "HTTPS"
+            },
+            "periodSeconds": 10,
+            "successThreshold": 1,
+            "timeoutSeconds": 5
+          },
+          "resources": {
+            "limits": {
+              "cpu": "500m",
+              "memory": "512Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            }
+          },
+          "securityContext": {
+            "allowPrivilegeEscalation": false,
+            "capabilities": {
+              "drop": [
+                "ALL"
+              ]
+            },
+            "privileged": false,
+            "readOnlyRootFilesystem": true,
+            "runAsNonRoot": true,
+            "seccompProfile": {
+              "type": "RuntimeDefault"
+            }
+          },
+          "startupProbe": {
+            "failureThreshold": 360,
+            "httpGet": {
+              "path": "/healthz",
+              "port": 8000,
+              "scheme": "HTTPS"
+            },
+            "periodSeconds": 10,
+            "successThreshold": 1,
+            "timeoutSeconds": 5
+          },
+          "terminationMessagePath": "/dev/termination-log",
+          "terminationMessagePolicy": "File",
+          "volumeMounts": [
+            {
+              "mountPath": "/var/lib/postgresql/data",
+              "name": "pgdata"
+            },
+            {
+              "mountPath": "/run",
+              "name": "scratch-data"
+            },
+            {
+              "mountPath": "/controller",
+              "name": "scratch-data"
+            },
+            {
+              "mountPath": "/dev/shm",
+              "name": "shm"
+            },
+            {
+              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+              "name": "kube-api-access-62nlz",
+              "readOnly": true
+            }
+          ]
+        }
+      ],
+      "dnsPolicy": "ClusterFirst",
+      "enableServiceLinks": true,
+      "hostname": "shop-db-1",
+      "initContainers": [
+        {
+          "command": [
+            "/manager",
+            "bootstrap",
+            "/controller/manager",
+            "--log-level=info"
+          ],
+          "image": "ghcr.io/cloudnative-pg/cloudnative-pg:1.25.1",
+          "imagePullPolicy": "IfNotPresent",
+          "name": "bootstrap-controller",
+          "resources": {
+            "limits": {
+              "cpu": "500m",
+              "memory": "512Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            }
+          },
+          "securityContext": {
+            "allowPrivilegeEscalation": false,
+            "capabilities": {
+              "drop": [
+                "ALL"
+              ]
+            },
+            "privileged": false,
+            "readOnlyRootFilesystem": true,
+            "runAsNonRoot": true,
+            "seccompProfile": {
+              "type": "RuntimeDefault"
+            }
+          },
+          "terminationMessagePath": "/dev/termination-log",
+          "terminationMessagePolicy": "File",
+          "volumeMounts": [
+            {
+              "mountPath": "/var/lib/postgresql/data",
+              "name": "pgdata"
+            },
+            {
+              "mountPath": "/run",
+              "name": "scratch-data"
+            },
+            {
+              "mountPath": "/controller",
+              "name": "scratch-data"
+            },
+            {
+              "mountPath": "/dev/shm",
+              "name": "shm"
+            },
+            {
+              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+              "name": "kube-api-access-62nlz",
+              "readOnly": true
+            }
+          ]
+        }
+      ],
+      "nodeName": "lab5-worker2",
+      "preemptionPolicy": "PreemptLowerPriority",
+      "priority": 0,
+      "restartPolicy": "Always",
+      "schedulerName": "default-scheduler",
+      "securityContext": {
+        "fsGroup": 26,
+        "runAsGroup": 26,
+        "runAsNonRoot": true,
+        "runAsUser": 26,
+        "seccompProfile": {
+          "type": "RuntimeDefault"
+        }
+      },
+      "serviceAccount": "shop-db",
+      "serviceAccountName": "shop-db",
+      "terminationGracePeriodSeconds": 1800,
+      "tolerations": [
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/not-ready",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        },
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/unreachable",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        }
+      ],
+      "volumes": [
+        {
+          "name": "pgdata",
+          "persistentVolumeClaim": {
+            "claimName": "shop-db-1"
+          }
+        },
+        {
+          "emptyDir": {},
+          "name": "scratch-data"
+        },
+        {
+          "emptyDir": {
+            "medium": "Memory"
+          },
+          "name": "shm"
+        },
+        {
+          "name": "kube-api-access-62nlz",
+          "projected": {
+            "defaultMode": 420,
+            "sources": [
+              {
+                "serviceAccountToken": {
+                  "expirationSeconds": 3607,
+                  "path": "token"
+                }
+              },
+              {
+                "configMap": {
+                  "items": [
+                    {
+                      "key": "ca.crt",
+                      "path": "ca.crt"
+                    }
+                  ],
+                  "name": "kube-root-ca.crt"
+                }
+              },
+              {
+                "downwardAPI": {
+                  "items": [
+                    {
+                      "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "metadata.namespace"
+                      },
+                      "path": "namespace"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:11:14Z",
+          "status": "True",
+          "type": "PodReadyToStartContainers"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:11:14Z",
+          "status": "True",
+          "type": "Initialized"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:11:23Z",
+          "status": "True",
+          "type": "Ready"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:11:23Z",
+          "status": "True",
+          "type": "ContainersReady"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:11:13Z",
+          "status": "True",
+          "type": "PodScheduled"
+        }
+      ],
+      "containerStatuses": [
+        {
+          "containerID": "containerd://c1ba5dc3aff164fd1113f6700d661d9d7a05c2d9bee274efc9caab5f3de54caf",
+          "image": "ghcr.io/cloudnative-pg/postgresql:17.4",
+          "imageID": "sha256:6a76f2cec65339afe13e463d2b68d2a7a64c6733e6558915dd89afb3c7942604",
+          "lastState": {},
+          "name": "postgres",
+          "ready": true,
+          "restartCount": 0,
+          "started": true,
+          "state": {
+            "running": {
+              "startedAt": "2026-10-25T19:11:15Z"
+            }
+          },
+          "volumeMounts": [
+            {
+              "mountPath": "/var/lib/postgresql/data",
+              "name": "pgdata"
+            },
+            {
+              "mountPath": "/run",
+              "name": "scratch-data"
+            },
+            {
+              "mountPath": "/controller",
+              "name": "scratch-data"
+            },
+            {
+              "mountPath": "/dev/shm",
+              "name": "shm"
+            },
+            {
+              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+              "name": "kube-api-access-62nlz",
+              "readOnly": true,
+              "recursiveReadOnly": "Disabled"
+            }
+          ]
+        }
+      ],
+      "hostIP": "172.18.0.4",
+      "hostIPs": [
+        {
+          "ip": "172.18.0.4"
+        }
+      ],
+      "initContainerStatuses": [
+        {
+          "containerID": "containerd://8a5e5f1c79d1cd819786751851c52b47ee10d8e628998fe36b960b67c827b757",
+          "image": "ghcr.io/cloudnative-pg/cloudnative-pg:1.25.1",
+          "imageID": "ghcr.io/cloudnative-pg/cloudnative-pg@sha256:b5210df46c05bed3c5dbb67d316dece0ed67f4d148acac169416079dc10e4a91",
+          "lastState": {},
+          "name": "bootstrap-controller",
+          "ready": true,
+          "restartCount": 0,
+          "started": false,
+          "state": {
+            "terminated": {
+              "containerID": "containerd://8a5e5f1c79d1cd819786751851c52b47ee10d8e628998fe36b960b67c827b757",
+              "exitCode": 0,
+              "finishedAt": "2026-10-25T19:11:14Z",
+              "reason": "Completed",
+              "startedAt": "2026-10-25T19:11:13Z"
+            }
+          },
+          "volumeMounts": [
+            {
+              "mountPath": "/var/lib/postgresql/data",
+              "name": "pgdata"
+            },
+            {
+              "mountPath": "/run",
+              "name": "scratch-data"
+            },
+            {
+              "mountPath": "/controller",
+              "name": "scratch-data"
+            },
+            {
+              "mountPath": "/dev/shm",
+              "name": "shm"
+            },
+            {
+              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+              "name": "kube-api-access-62nlz",
+              "readOnly": true,
+              "recursiveReadOnly": "Disabled"
+            }
+          ]
+        }
+      ],
+      "phase": "Running",
+      "podIP": "10.244.2.234",
+      "podIPs": [
+        {
+          "ip": "10.244.2.234"
+        }
+      ],
+      "qosClass": "Burstable",
+      "startTime": "2026-10-25T19:11:13Z"
+    }
+  },
+  {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "creationTimestamp": "2026-10-25T19:29:56Z",
+      "generateName": "shop-worker-85bfb59f55-",
+      "labels": {
+        "app": "shop",
+        "app.kubernetes.io/instance": "shop",
+        "app.kubernetes.io/managed-by": "Helm",
+        "app.kubernetes.io/name": "worker",
+        "app.kubernetes.io/part-of": "shop",
+        "pod-template-hash": "85bfb59f55"
+      },
+      "name": "shop-worker-85bfb59f55-hx9w7",
+      "namespace": "shop",
+      "ownerReferences": [
+        {
+          "apiVersion": "apps/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "ReplicaSet",
+          "name": "shop-worker-85bfb59f55",
+          "uid": "3895a002-8c62-4c44-bef9-1f825857d6e0"
+        }
+      ],
+      "resourceVersion": "13336",
+      "uid": "c56fdc93-fc36-43ad-b982-2127d44c202f"
+    },
+    "spec": {
+      "automountServiceAccountToken": false,
+      "containers": [
+        {
+          "env": [
+            {
+              "name": "ROLE",
+              "value": "worker"
+            },
+            {
+              "name": "HEALTH_FAIL",
+              "value": "false"
+            },
+            {
+              "name": "WORKER_POLL_SECONDS",
+              "value": "1"
+            },
+            {
+              "name": "PGHOST",
+              "value": "shop-db-rw"
+            },
+            {
+              "name": "PGDATABASE",
+              "value": "shop"
+            },
+            {
+              "name": "PGUSER",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "key": "username",
+                  "name": "shop-db-app"
+                }
+              }
+            },
+            {
+              "name": "PGPASSWORD",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "key": "password",
+                  "name": "shop-db-app"
+                }
+              }
+            }
+          ],
+          "image": "registry.local/shop/app:1.0.0",
+          "imagePullPolicy": "Never",
+          "lifecycle": {
+            "preStop": {
+              "exec": {
+                "command": [
+                  "python",
+                  "-c",
+                  "import time; time.sleep(5)"
+                ]
+              }
+            }
+          },
+          "livenessProbe": {
+            "failureThreshold": 3,
+            "httpGet": {
+              "path": "/health",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 10,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "name": "worker",
+          "ports": [
+            {
+              "containerPort": 8000,
+              "name": "http",
+              "protocol": "TCP"
+            }
+          ],
+          "readinessProbe": {
+            "failureThreshold": 1,
+            "httpGet": {
+              "path": "/health",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 2,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "resources": {
+            "limits": {
+              "cpu": "300m",
+              "memory": "192Mi"
+            },
+            "requests": {
+              "cpu": "50m",
+              "memory": "64Mi"
+            }
+          },
+          "securityContext": {
+            "allowPrivilegeEscalation": false,
+            "capabilities": {
+              "drop": [
+                "ALL"
+              ]
+            },
+            "privileged": false,
+            "readOnlyRootFilesystem": true
+          },
+          "startupProbe": {
+            "failureThreshold": 60,
+            "httpGet": {
+              "path": "/version",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 2,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "terminationMessagePath": "/dev/termination-log",
+          "terminationMessagePolicy": "File"
+        }
+      ],
+      "dnsPolicy": "ClusterFirst",
+      "enableServiceLinks": true,
+      "nodeName": "lab5-worker",
+      "preemptionPolicy": "PreemptLowerPriority",
+      "priority": 0,
+      "restartPolicy": "Always",
+      "schedulerName": "default-scheduler",
+      "securityContext": {
+        "runAsGroup": 10001,
+        "runAsNonRoot": true,
+        "runAsUser": 10001,
+        "seccompProfile": {
+          "type": "RuntimeDefault"
+        }
+      },
+      "serviceAccount": "default",
+      "serviceAccountName": "default",
+      "terminationGracePeriodSeconds": 30,
+      "tolerations": [
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/not-ready",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        },
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/unreachable",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        }
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:58Z",
+          "status": "True",
+          "type": "PodReadyToStartContainers"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:56Z",
+          "status": "True",
+          "type": "Initialized"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:30:02Z",
+          "status": "True",
+          "type": "Ready"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:30:02Z",
+          "status": "True",
+          "type": "ContainersReady"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:56Z",
+          "status": "True",
+          "type": "PodScheduled"
+        }
+      ],
+      "containerStatuses": [
+        {
+          "containerID": "containerd://f106b34c291521692ebd0839f621f523f71e50f59752056ae67d846fdd48b0cc",
+          "image": "registry.local/shop/app:1.0.0",
+          "imageID": "sha256:2c9f52d451a0e6b6d381a43f512bca3a416cecb4a8a83156d4ed2218ccf35326",
+          "lastState": {},
+          "name": "worker",
+          "ready": true,
+          "restartCount": 0,
+          "started": true,
+          "state": {
+            "running": {
+              "startedAt": "2026-10-25T19:29:57Z"
+            }
+          }
+        }
+      ],
+      "hostIP": "172.18.0.2",
+      "hostIPs": [
+        {
+          "ip": "172.18.0.2"
+        }
+      ],
+      "phase": "Running",
+      "podIP": "10.244.1.173",
+      "podIPs": [
+        {
+          "ip": "10.244.1.173"
+        }
+      ],
+      "qosClass": "Burstable",
+      "startTime": "2026-10-25T19:29:56Z"
+    }
+  },
+  {
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+      "creationTimestamp": "2026-10-25T19:29:31Z",
+      "generateName": "shop-worker-85bfb59f55-",
+      "labels": {
+        "app": "shop",
+        "app.kubernetes.io/instance": "shop",
+        "app.kubernetes.io/managed-by": "Helm",
+        "app.kubernetes.io/name": "worker",
+        "app.kubernetes.io/part-of": "shop",
+        "pod-template-hash": "85bfb59f55"
+      },
+      "name": "shop-worker-85bfb59f55-pwgvw",
+      "namespace": "shop",
+      "ownerReferences": [
+        {
+          "apiVersion": "apps/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "ReplicaSet",
+          "name": "shop-worker-85bfb59f55",
+          "uid": "3895a002-8c62-4c44-bef9-1f825857d6e0"
+        }
+      ],
+      "resourceVersion": "13162",
+      "uid": "a4af6c64-2207-4d51-b323-ed7fc041f273"
+    },
+    "spec": {
+      "automountServiceAccountToken": false,
+      "containers": [
+        {
+          "env": [
+            {
+              "name": "ROLE",
+              "value": "worker"
+            },
+            {
+              "name": "HEALTH_FAIL",
+              "value": "false"
+            },
+            {
+              "name": "WORKER_POLL_SECONDS",
+              "value": "1"
+            },
+            {
+              "name": "PGHOST",
+              "value": "shop-db-rw"
+            },
+            {
+              "name": "PGDATABASE",
+              "value": "shop"
+            },
+            {
+              "name": "PGUSER",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "key": "username",
+                  "name": "shop-db-app"
+                }
+              }
+            },
+            {
+              "name": "PGPASSWORD",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "key": "password",
+                  "name": "shop-db-app"
+                }
+              }
+            }
+          ],
+          "image": "registry.local/shop/app:1.0.0",
+          "imagePullPolicy": "Never",
+          "lifecycle": {
+            "preStop": {
+              "exec": {
+                "command": [
+                  "python",
+                  "-c",
+                  "import time; time.sleep(5)"
+                ]
+              }
+            }
+          },
+          "livenessProbe": {
+            "failureThreshold": 3,
+            "httpGet": {
+              "path": "/health",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 10,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "name": "worker",
+          "ports": [
+            {
+              "containerPort": 8000,
+              "name": "http",
+              "protocol": "TCP"
+            }
+          ],
+          "readinessProbe": {
+            "failureThreshold": 1,
+            "httpGet": {
+              "path": "/health",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 2,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "resources": {
+            "limits": {
+              "cpu": "300m",
+              "memory": "192Mi"
+            },
+            "requests": {
+              "cpu": "50m",
+              "memory": "64Mi"
+            }
+          },
+          "securityContext": {
+            "allowPrivilegeEscalation": false,
+            "capabilities": {
+              "drop": [
+                "ALL"
+              ]
+            },
+            "privileged": false,
+            "readOnlyRootFilesystem": true
+          },
+          "startupProbe": {
+            "failureThreshold": 60,
+            "httpGet": {
+              "path": "/version",
+              "port": "http",
+              "scheme": "HTTP"
+            },
+            "periodSeconds": 2,
+            "successThreshold": 1,
+            "timeoutSeconds": 1
+          },
+          "terminationMessagePath": "/dev/termination-log",
+          "terminationMessagePolicy": "File"
+        }
+      ],
+      "dnsPolicy": "ClusterFirst",
+      "enableServiceLinks": true,
+      "nodeName": "lab5-worker2",
+      "preemptionPolicy": "PreemptLowerPriority",
+      "priority": 0,
+      "restartPolicy": "Always",
+      "schedulerName": "default-scheduler",
+      "securityContext": {
+        "runAsGroup": 10001,
+        "runAsNonRoot": true,
+        "runAsUser": 10001,
+        "seccompProfile": {
+          "type": "RuntimeDefault"
+        }
+      },
+      "serviceAccount": "default",
+      "serviceAccountName": "default",
+      "terminationGracePeriodSeconds": 30,
+      "tolerations": [
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/not-ready",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        },
+        {
+          "effect": "NoExecute",
+          "key": "node.kubernetes.io/unreachable",
+          "operator": "Exists",
+          "tolerationSeconds": 300
+        }
+      ]
+    },
+    "status": {
+      "conditions": [
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:33Z",
+          "status": "True",
+          "type": "PodReadyToStartContainers"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:31Z",
+          "status": "True",
+          "type": "Initialized"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:37Z",
+          "status": "True",
+          "type": "Ready"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:37Z",
+          "status": "True",
+          "type": "ContainersReady"
+        },
+        {
+          "lastProbeTime": null,
+          "lastTransitionTime": "2026-10-25T19:29:31Z",
+          "status": "True",
+          "type": "PodScheduled"
+        }
+      ],
+      "containerStatuses": [
+        {
+          "containerID": "containerd://3c62813354847e4a108b713df379fc27ee9af3171bb87f9c2a4d546ae3002bbd",
+          "image": "registry.local/shop/app:1.0.0",
+          "imageID": "sha256:2c9f52d451a0e6b6d381a43f512bca3a416cecb4a8a83156d4ed2218ccf35326",
+          "lastState": {},
+          "name": "worker",
+          "ready": true,
+          "restartCount": 0,
+          "started": true,
+          "state": {
+            "running": {
+              "startedAt": "2026-10-25T19:29:32Z"
+            }
+          }
+        }
+      ],
+      "hostIP": "172.18.0.4",
+      "hostIPs": [
+        {
+          "ip": "172.18.0.4"
+        }
+      ],
+      "phase": "Running",
+      "podIP": "10.244.2.59",
+      "podIPs": [
+        {
+          "ip": "10.244.2.59"
+        }
+      ],
+      "qosClass": "Burstable",
+      "startTime": "2026-10-25T19:29:31Z"
+    }
+  }
+]

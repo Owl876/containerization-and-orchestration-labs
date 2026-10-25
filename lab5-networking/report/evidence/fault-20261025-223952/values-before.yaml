@@ -1,0 +1,4 @@
+monitoring:
+  enabled: false
+networkPolicy:
+  enabled: true

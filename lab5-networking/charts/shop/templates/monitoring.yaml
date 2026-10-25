@@ -1,0 +1,55 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "shop.labels" . | nindent 4 }}
+    release: {{ .Values.monitoring.release }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app: shop
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: [api, worker]
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.monitoring.interval }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "shop.labels" . | nindent 4 }}
+    release: {{ .Values.monitoring.release }}
+spec:
+  groups:
+    - name: shop
+      rules:
+        - alert: ShopApiReplicasUnavailable
+          expr: kube_deployment_status_replicas_available{namespace="{{ .Release.Namespace }}",deployment="{{ .Release.Name }}-api"} < kube_deployment_spec_replicas{namespace="{{ .Release.Namespace }}",deployment="{{ .Release.Name }}-api"}
+          for: {{ .Values.monitoring.alertFor }}
+          labels:
+            severity: warning
+          annotations:
+            summary: "Shop API has fewer available replicas than desired"
+        - alert: ShopHighErrorRate
+          expr: sum(rate(shop_http_requests_total{namespace="{{ .Release.Namespace }}",service="{{ .Release.Name }}-api",path!="/health",status=~"5.."}[2m])) / clamp_min(sum(rate(shop_http_requests_total{namespace="{{ .Release.Namespace }}",service="{{ .Release.Name }}-api",path!="/health"}[2m])), 0.001) > 0.1
+          for: {{ .Values.monitoring.alertFor }}
+          labels:
+            severity: critical
+          annotations:
+            summary: "More than 10 percent of Shop API business requests fail"
+        - alert: ShopWorkersStalled
+          expr: max by (namespace) (kube_deployment_status_replicas_available{namespace="{{ .Release.Namespace }}",deployment="{{ .Release.Name }}-worker"}) == 0 or time() - max by (namespace) (shop_worker_last_success_timestamp_seconds{namespace="{{ .Release.Namespace }}",service="{{ .Release.Name }}-worker"}) > 60 or max by (namespace) (absent(shop_worker_last_success_timestamp_seconds{namespace="{{ .Release.Namespace }}",service="{{ .Release.Name }}-worker"}))
+          for: {{ .Values.monitoring.alertFor }}
+          labels:
+            severity: critical
+          annotations:
+            summary: "No worker has successfully polled PostgreSQL for over a minute"
+{{- end }}

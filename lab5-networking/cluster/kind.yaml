@@ -1,0 +1,18 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  # Сеть подов настроит Cilium вместо kindnet.
+  disableDefaultCNI: true
+  # Сохраняем kube-proxy для исследования Service в части 2.
+  kubeProxyMode: iptables
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.32.2
+  - role: worker
+    image: kindest/node:v1.32.2
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 28000
+        listenAddress: "127.0.0.1"
+  - role: worker
+    image: kindest/node:v1.32.2
