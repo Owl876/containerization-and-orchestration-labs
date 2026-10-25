@@ -1,0 +1,123 @@
+podSpread:
+  # topologySpread | antiAffinity — обоснование выбора дефолта в README (часть 1)
+  mechanism: topologySpread
+  maxSkew: 1
+  # DoNotSchedule — жёсткое разнесение; ScheduleAnyway — мягкое (при потере ноды реплики переедут на живую)
+  whenUnsatisfiable: DoNotSchedule
+
+# ServiceMonitor — CRD Prometheus Operator'а из kube-prometheus-stack (стек лабы 2
+# должен стоять до helm install/upgrade этого чарта, иначе CRD ещё нет)
+serviceMonitor:
+  enabled: true
+  interval: 15s
+
+# сайдкар Grafana подхватывает ConfigMap с лейблом grafana_dashboard
+grafanaDashboard:
+  enabled: true
+
+# Алерты (часть 9): SLA по задержке, доля 5xx и давление по памяти на ноде.
+# Пороги SLA совпадают с формулировкой из части 8: p95 < 300 мс, 5xx < 1%.
+prometheusRule:
+  enabled: true
+  latencyP95Seconds: 0.3
+  latencyFor: 2m
+  errorRatio: 0.01
+  errorsFor: 2m
+  memoryPressureFor: 30s
+
+# Приоритеты (часть 5). critical — выше всего пользовательского, batch — ниже дефолтного 0,
+# которым живёт, например, мониторинг (так batch вытесняется раньше него).
+priority:
+  critical:
+    name: shop-critical
+    value: 100000
+  batch:
+    name: shop-batch
+    value: -100
+
+# PDB на api и worker: добровольные выселения (drain) не выбьют больше одной реплики разом
+pdb:
+  maxUnavailable: 1
+
+# Ресурсы критического пути (api, worker, postgres) — по итогам krr (часть 3),
+# requests = limits (QoS Guaranteed). Память — max + 15% как у krr simple-limit, округлено
+# вверх (postgres — по окну 24 часа, иначе OOMKilled при рестарте). CPU — p96 из krr/Prometheus
+# с запасом около x3.5: лимит CFS считается окнами по 100 мс, и при лимите около p96
+# сервис троттлится в ~30% окон, а p95 латентности вырастает с миллисекунд до секунд.
+# Подробности и сравнение с первой прикидкой — в README.
+# batch — не критический путь, остаётся Burstable (requests заметно ниже limits).
+
+api:
+  image:
+    repository: shop-api
+    tag: local
+    pullPolicy: Never
+  replicaCount: 3
+  service:
+    port: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 80Mi
+    limits:
+      cpu: 100m
+      memory: 80Mi
+
+worker:
+  image:
+    repository: shop-worker
+    tag: local
+    pullPolicy: Never
+  replicaCount: 3
+  service:
+    port: 8000
+  pollIntervalSeconds: 1
+  # сколько заказов одна реплика упаковывает одновременно (кладовщиц на реплику)
+  concurrency: 16
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
+
+batch:
+  image:
+    repository: shop-batch
+    tag: local
+    pullPolicy: Never
+  replicaCount: 2
+  cpuWorkers: 1
+  memoryMb: 100
+  # 0 — занять всё сразу; >0 — набирать память со скоростью МиБ/сек (часть 7: давление на ноду должно расти плавно)
+  growMbPerSec: 0
+  # requests заметно ниже limits (Burstable) и достаточно крупные, чтобы кластер из двух нод
+  # по 3 CPU / 5 ГБ (setup/04-tight-cluster.sh) заполнялся за считанные реплики (часть 6)
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 1536Mi
+
+postgresql:
+  enabled: true
+  auth:
+    username: shop
+    # дев-пароль для лабы в открытую — для продакшена тут был бы existingSecret
+    password: shop
+    database: shop
+  primary:
+    priorityClassName: shop-critical
+    # одна реплика: у Bitnami по умолчанию maxUnavailable: 1, то есть PDB ничего не защищает
+    pdb:
+      minAvailable: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 208Mi
+      limits:
+        cpu: 100m
+        memory: 208Mi

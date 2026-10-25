@@ -1,0 +1,4 @@
+# Часть 7А: один batch просит больше собственного limit (1536Mi) -> OOMKilled
+batch:
+  replicaCount: 1
+  memoryMb: 2000

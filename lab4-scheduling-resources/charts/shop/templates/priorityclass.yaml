@@ -1,0 +1,18 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Values.priority.critical.name }}
+value: {{ .Values.priority.critical.value }}
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "Критический путь лавки панд (api, worker, postgres): при нехватке ресурсов вытесняет всё, что ниже"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Values.priority.batch.name }}
+value: {{ .Values.priority.batch.value }}
+globalDefault: false
+# batch никого не вытесняет, даже если не влезает: он сам расходный материал
+preemptionPolicy: Never
+description: "Фоновая ночная аналитика: ниже дефолтного 0 у мониторинга, первая жертва при нехватке ресурсов"

@@ -1,0 +1,43 @@
+{{- if .Values.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-alerts
+  labels:
+    app: shop
+spec:
+  groups:
+    - name: shop-critical-path
+      rules:
+        - alert: ShopOrderLatencySLOBreach
+          expr: |
+            histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{path="/orders",method="POST"}[2m])))
+              > {{ .Values.prometheusRule.latencyP95Seconds }}
+          for: {{ .Values.prometheusRule.latencyFor }}
+          labels:
+            severity: critical
+          annotations:
+            summary: "SLA заказов нарушен: p95 POST /orders выше {{ .Values.prometheusRule.latencyP95Seconds }} с"
+            description: "p95 создания заказа = {{`{{ $value | humanizeDuration }}`}} (SLA: быстрее 300 мс для 95% запросов)."
+
+        - alert: ShopOrderErrorsHigh
+          expr: |
+            sum(rate(http_requests_total{path="/orders",method="POST",status=~"5.."}[2m]))
+              / sum(rate(http_requests_total{path="/orders",method="POST"}[2m]))
+              > {{ .Values.prometheusRule.errorRatio }}
+          for: {{ .Values.prometheusRule.errorsFor }}
+          labels:
+            severity: critical
+          annotations:
+            summary: "Заказы падают: доля 5xx на POST /orders выше {{ .Values.prometheusRule.errorRatio }}"
+            description: "Доля 5xx = {{`{{ $value | humanizePercentage }}`}} (SLA: ниже 1%)."
+
+        - alert: ShopNodeMemoryPressure
+          expr: kube_node_status_condition{condition="MemoryPressure",status="true"} == 1
+          for: {{ .Values.prometheusRule.memoryPressureFor }}
+          labels:
+            severity: warning
+          annotations:
+            summary: "На ноде {{`{{ $labels.node }}`}} давление по памяти"
+            description: "kubelet на {{`{{ $labels.node }}`}} выселяет поды, начиная с самых дешёвых (batch). Критический путь пока цел, но запас по памяти на ноде кончился."
+{{- end }}

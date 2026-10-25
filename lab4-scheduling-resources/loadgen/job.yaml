@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: loadgen
+  namespace: loadtest
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: loadgen
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: loadgen
+          image: shop-api:local
+          imagePullPolicy: Never
+          command: ["python", "-u", "/loadgen/loadgen.py"]
+          env:
+            - name: WAVES
+              value: "${WAVES}"
+            - name: CYCLES
+              value: "${CYCLES}"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: script
+              mountPath: /loadgen
+      volumes:
+        - name: script
+          configMap:
+            name: loadgen
