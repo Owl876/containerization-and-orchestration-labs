@@ -1,34 +1,50 @@
 # Лаба 5 — Zero-trust сеть с доказательством
 
-*PandaRecovery уже принимает задания по спасению контейнеровоза. Теперь пандам нужно разобраться с корабельной сетью: терминал оператора должен обращаться к API, API и worker — к журналу в PostgreSQL. Камере доступ к журналу не нужен. При этом замена подов не должна прерывать работу оператора.*
+<table>
+<tr><td align="center">
 
-В этой работе использовали приложение `shop` из лабы 3. Проверили связь между подами, провели эксперимент с их удалением, ограничили доступ сетевыми политиками и нашли намеренно внесённую ошибку через Hubble. Метрики отправили в уже существующий стек мониторинга.
+<img src="report/story/0-network-access.png" width="560">
+
+<br>
+
+*Панды готовят план перемещения груза. Оператор отправляет задания в PandaRecovery через API, worker их обрабатывает, а база хранит результаты. За грузом на палубе следят через камеру. Она подключена к той же сети, но обращаться к базе ей незачем.*
+
+*Нужно оставить только нужные соединения, проверить работу сервиса при замене подов и разобраться, как искать сетевые ошибки.*
+
+</td></tr>
+</table>
+
+Для проверки взяли `shop` из третьей лабы. Вместо расчётов груза в нём пока тестовые задания, но для опытов с сетью этого вполне достаточно.
 
 Структура:
 
-- [0. Выбор CNI](#часть-0--выбор-cni)
+- [0. Кластер в Docker и выбор CNI](#часть-0--кластер-в-docker-и-выбор-cni)
 - [1. Сеть пода](#часть-1--сеть-пода)
-- [2. Непрерывность при пересоздании подов](#часть-2--непрерывность-при-пересоздании-подов)
-- [3. Целевая матрица доступа](#часть-3--целевая-матрица-доступа)
+- [2. Пересоздание подов под нагрузкой](#часть-2--пересоздание-подов-под-нагрузкой)
+- [3. Кому нужен доступ](#часть-3--кому-нужен-доступ)
 - [4. Сетевые политики](#часть-4--сетевые-политики)
-- [5. Проверка матрицы](#часть-5--проверка-матрицы)
-- [6. Диагностика скрытой поломки](#часть-6--диагностика-скрытой-поломки)
+- [5. Проверка доступа](#часть-5--проверка-доступа)
+- [6. Поиск поломки через Hubble](#часть-6--поиск-поломки-через-hubble)
 - [7. Мониторинг](#часть-7--мониторинг)
 
-## Часть 0 — Выбор CNI
+## Часть 0 — Кластер в Docker и выбор CNI
 
-Для сети выбрали **Cilium с Hubble**. Cilium применяет NetworkPolicy, а Hubble позволяет наблюдать сетевые потоки и блокировки. Через Hubble затем проверяли запрещённые соединения и искали причину поломки. Calico также подходит для применения политик; Cilium выбран ради встроенной сетевой наблюдаемости.
+Кластер подняли через kind. Я впервые попробовал запускать Kubernetes так: вместо отдельных машин под ноды используются обычные Docker-контейнеры. В каждом работают kubelet и containerd и через них запускаются поды. Весь кластер помещается на одном ноутбуке.
 
-В `cluster/kind.yaml` отключили стандартный CNI kindnet. Вместо него установили Cilium. Само принятие NetworkPolicy API-сервером ещё не означает, что правила исполняются — для этого нужна поддержка со стороны сетевого компонента.
+В [kind.yaml](cluster/kind.yaml) указали одну управляющую ноду и две рабочие. Получили три контейнера в общей Docker-сети `kind`. Рабочих нод взяли две, чтобы проверить, как общаются поды на разных нодах.
 
-Стенд включает control plane и две worker-ноды для проверки межнодовой связи. Для API предусмотрен порт `127.0.0.1:28000`, направленный на NodePort `30080` одной worker-ноды; он отличается от порта стенда лабы 3.
+<a href="report/diagrams/kind-cluster.svg"><img src="report/diagrams/kind-cluster.svg" width="720"></a>
 
-Kube-proxy оставлен в режиме `iptables`, а его замена средствами Cilium отключена через `kubeProxyReplacement: false`. Поэтому в части 2 исследовали работу Service через kube-proxy. В `cluster/cilium-values.yaml` включены Hubble Relay для сбора потоков с разных нод и Hubble UI для их просмотра. До установки CNI состояние нод `NotReady` ожидаемо.
+Docker-сеть соединяет сами ноды. Для сети подов выбрали Cilium вместо стандартного kindnet. Вместе с ним поставили Hubble, чтобы видеть разрешённые и заблокированные соединения.
 
-На стенде использовали kind 0.30.0, Kubernetes 1.32.2 и Cilium 1.18.16. Ноды kind запускались контейнерами в Docker-контексте `panda-host`. Для кластера выделили kubeconfig `$HOME/.kube/lab5.yaml` и контекст `kind-lab5`, чтобы не путать его с кластером мониторинга.
+За Service оставили отвечать kube-proxy в режиме `iptables`. В [настройках Cilium](cluster/cilium-values.yaml) отключили его замену (`kubeProxyReplacement: false`) и включили Hubble Relay и веб-интерфейс.
+
+Заодно впервые попробовал Lens. Раньше пользовался k9s, но для этой лабы Lens оказался удобнее. В нём смотрел состояние нод и подов.
 
 <details>
-<summary>Три готовые ноды в Lens</summary>
+<summary>Проверка кластера в Lens</summary>
+
+Открыл в Lens kubeconfig `$HOME/.kube/lab5.yaml` и выбрал `kind-lab5`. В разделе Nodes все три ноды уже были `Ready`.
 
 <a href="report/screenshots/01-cluster-ready.png"><img src="report/screenshots/01-cluster-ready.png" width="850"></a>
 
@@ -36,29 +52,31 @@ Kube-proxy оставлен в режиме `iptables`, а его замена �
 
 ## Часть 1 — Сеть пода
 
-Развернули `shop` из лабы 3: три реплики API, две реплики worker и PostgreSQL под управлением CloudNativePG. После запуска все шесть подов были готовы, а API отвечал через NodePort на `127.0.0.1:28000`. Использовали образ приложения `registry.local/shop/app:1.0.0`, оператор CloudNativePG 1.25.1 и PostgreSQL 17.4. Код приложения и скрипт загрузки образов взяли из `lab3-control-plane`, копировать их в эту лабораторную не стали.
-
-Сеть проверили скриптом:
-
-```bash
-bash lab5-networking/scripts/01-network-check.sh
-```
-
-В нашем запуске под API на `lab5-worker` имел IP `10.244.1.159`. Внутри его сетевого namespace интерфейс `eth0` имел `ifindex=18` и `iflink=19`. На ноде найден парный интерфейс `lxc6894d3ddab56@if18` с индексом 19. Так связаны два конца veth: один находится внутри пода, второй — в сетевом namespace ноды.
-
-Из этого пода отправили запрос к `http://10.244.2.204:8000/health` — API на `lab5-worker2`. Получили `HTTP 200 ok`. Запрос шёл напрямую на IP пода, без Service и DNS; результат подтверждает межнодовую связность для проверенного направления. IP и имена интерфейсов относятся к этому запуску и могут измениться после пересоздания подов.
+Развернули три реплики API, две worker и PostgreSQL под управлением CloudNativePG. В Lens открыли Pods и выбрали namespace `shop`. Все шесть подов в `Running`, перезапусков нет.
 
 <a href="report/screenshots/02-shop-pods.png"><img src="report/screenshots/02-shop-pods.png" width="850"></a>
 
+Приложение взяли из [третьей лабы](../lab3-control-plane). С ноутбука API доступен на `127.0.0.1:28000` через NodePort.
+
+Потом проверили сеть подов скриптом:
+
+~~~bash
+bash lab5-networking/scripts/01-network-check.sh
+~~~
+
+Нашли IP пода и его интерфейс `eth0`, а на ноде — парный интерфейс. Вместе они образуют veth-пару, через которую под подключён к сети ноды.
+
+Затем из одного пода запросили `/health` у API на другой ноде, напрямую по IP. Получили `200 ok`, значит, поды связались без Service и DNS. Внизу скрина виден ответ.
+
 <a href="report/screenshots/03-pod-network.png"><img src="report/screenshots/03-pod-network.png" width="850"></a>
 
-## Часть 2 — Непрерывность при пересоздании подов
+## Часть 2 — Пересоздание подов под нагрузкой
 
-Для эксперимента запустили `python3 lab5-networking/scripts/02-chaos.py`. В течение трёх минут два клиента проверяют `/health`: один через DNS Service из отдельного пода, второй через NodePort с хоста. Каждые восемь секунд скрипт выбирает случайный готовый под API или worker и удаляет его обычным graceful deletion. Повторных попыток HTTP-запросов нет. Исходные запросы, события удаления и снимки подов сохраняются в отдельную папку `report/evidence/chaos-*` для каждого запуска.
+Запустили [02-chaos.py](scripts/02-chaos.py). Два клиента три минуты запрашивали `/health`: один из пода по DNS-имени Service, другой с ноутбука через NodePort. Каждые восемь секунд скрипт удалял случайный готовый под API или worker.
 
-Первый прогон `chaos-20261025-222114`: 21 удаление, 29 запросов через DNS и 875 через NodePort, ошибок нет. Однако каждый DNS-запрос занимал около 6 секунд, поэтому этот результат не трактуется как отсутствие деградации.
+С первого раза получилось странно. Ошибок не было, но через DNS прошло всего 29 запросов, а через NodePort — 875. Оказалось, разрешение полного имени занимало примерно шесть секунд.
 
-Диагностика разрешения имён показала:
+Сравнили три варианта имени:
 
 | Имя | Время разрешения |
 | --- | --- |
@@ -66,58 +84,55 @@ bash lab5-networking/scripts/01-network-check.sh
 | `shop-api.shop.svc.cluster.local` | 6,007 с |
 | `shop-api.shop.svc.cluster.local.` | 0,001 с |
 
-В `/etc/resolv.conf` пода установлены `ndots:5` и поисковые суффиксы `shop.svc.cluster.local svc.cluster.local cluster.local dlink`. Имя без завершающей точки содержит четыре точки, поэтому сначала проверяется с поисковыми суффиксами. В клиенте заменили его на абсолютное DNS-имя с завершающей точкой. Это сохраняет обращение через DNS и Service, устраняя лишний поиск; конкретный медленный DNS-запрос среди поисковых вариантов отдельно не трассировался.
+При `ndots:5` наше имя с четырьмя точками сначала проверялось с поисковыми суффиксами. Добавили точку в конце, чтобы искать сразу полное имя. Задержка исчезла.
 
-Для этого опыта политики ещё не включали, а Service работал с `externalTrafficPolicy: Cluster`. При повторении на финальном чарте нужно явно задать `--set networkPolicy.enabled=false --set api.externalTrafficPolicy=Cluster`; итоговая конфигурация доступа из частей 4–5 отличается от условий этого опыта.
+Повторили тест. За 180 секунд получили 870 запросов через DNS и 874 через NodePort, в обоих случаях 0 ошибок. За это время скрипт удалил 21 под API/worker.
 
-### Результат повторного эксперимента
+<a href="report/evidence/chaos-after-dns-fix/continuity.svg"><img src="report/evidence/chaos-after-dns-fix/continuity.svg" width="850"></a>
 
-После исправления DNS-имени повторили эксперимент: `chaos-20261025-222658`: за 180 секунд клиент через DNS Service выполнил **870 запросов**, клиент через NodePort — **874**, в обоих потоках **0 ошибок**. Удалён 21 под API/worker. Это результат проверки `/health` при обычном удалении подов с graceful shutdown, а не гарантия отсутствия ошибок при аварийном отказе ноды или для всех бизнес-операций.
+<details>
+<summary>Вывод теста и условия запуска</summary>
 
-<a href="report/evidence/chaos-20261025-222658/continuity.svg"><img src="report/evidence/chaos-20261025-222658/continuity.svg" width="850"></a>
+В терминале остался список удалённых подов с их IP. Внизу скрипт вывел число запросов и ошибок для обоих клиентов.
 
-<a href="report/screenshots/04-pod-chaos.png"><img src="report/screenshots/04-pod-chaos.png" width="850"></a>
+<a href="report/screenshots/04-pod-chaos.png"><img src="report/screenshots/04-pod-chaos.png" width="800"></a>
 
-### Почему Service пережил пересоздание подов
+Здесь мы ещё не ограничивали доступ сетевыми политиками. Внешний запрос мог попасть в API на любой ноде (`externalTrafficPolicy: Cluster`). Позже переключились на `Local`, где запрос обслуживает только нода, на которую он пришёл. Поэтому результат этого теста относится к режиму `Cluster`.
 
-DNS возвращает стабильный ClusterIP обычного Service, а не фиксирует адрес конкретного пода. Контроллер обновляет EndpointSlice при изменении состава и готовности подов. Kube-proxy отслеживает Service и EndpointSlice и программирует перенаправление трафика к доступным endpoint на нодах. Он не является HTTP-прокси, через процесс которого проходит каждый запрос.
+</details>
 
-В сохранённом `kube-proxy.yaml` указан режим `iptables`. В этом режиме перенаправление реализуется правилами netfilter. IPVS использует подсистему балансировки ядра; разница становится существеннее при большом числе Service/endpoint и частых обновлениях. В данном небольшом стенде сравнение производительности режимов не проводилось.
+### Почему запросы продолжали проходить
 
-Нулю ошибок способствовали несколько реплик, readiness-пробы, обычное удаление с graceful shutdown и `preStop` с паузой 5 секунд для обновления маршрутизации. Сам по себе Service не гарантирует сохранность уже установленных соединений при внезапной смерти пода.
+У Service постоянный адрес. Пока один под удалялся, запросы принимали другие готовые реплики. Kubernetes обновлял список подов, а kube-proxy — правила, куда отправлять трафик. Пауза в `preStop` давала на это время перед остановкой пода.
 
-NodePort открывает порт нод, который направляет трафик к Service; в kind порт 30080 одной worker-ноды опубликован на `127.0.0.1:28000` ноутбука. LoadBalancer запрашивает внешний балансировщик у доступной реализации инфраструктуры. Headless Service (`clusterIP: None`) не имеет виртуального ClusterIP: DNS может возвращать адреса его endpoint, а выбор адресата остаётся клиенту.
+С ноутбука подключались через NodePort, то есть через порт ноды. LoadBalancer даёт доступ через внешний балансировщик, а Headless Service отдаёт адреса подов напрямую через DNS.
 
-## Часть 3 — Целевая матрица доступа
+## Часть 3 — Кому нужен доступ
 
-В сюжете клиент — терминал оператора на мостике, API принимает задания спасательной операции, worker обрабатывает их, а PostgreSQL хранит журнал. Посторонний под изображает терминал камеры, которому доступ к журналу запрещён.
+Разрешили терминалу обращаться к API, а API и worker к базе. Всё остальное между подами приложения решили закрыть. Камеру из сюжета в тесте изображает под `panda-camera`. С него проверяем, что постороннее устройство не получит доступ к сервисам.
 
-Целевая матрица соединений приложения:
+Получилась такая таблица доступа. API → API и worker → worker здесь означают подключение к другому поду, а не к самому себе.
 
 | Источник | API, TCP 8000 | worker, TCP 8000 | PostgreSQL, TCP 5432 |
 | --- | --- | --- | --- |
-| Терминал оператора (`app=panda-client`) | Разрешено | Запрещено | Запрещено |
-| API | Запрещено между разными подами | Запрещено | Разрешено |
-| worker | Запрещено | Запрещено между разными подами | Разрешено |
-| Посторонний под (`app=panda-camera`) | Запрещено | Запрещено | Запрещено |
-| PostgreSQL | Запрещено | Запрещено | Репликация между подами своего DB-кластера разрешена |
+| Терминал (`panda-client`) | Да | Нет | Нет |
+| API | Нет | Нет | Да |
+| worker | Нет | Нет | Да |
+| Камера (`panda-camera`) | Нет | Нет | Нет |
+| PostgreSQL | Нет | Нет | Только внутри своего DB-кластера |
 
-Матрица описывает новые соединения между подами; ответный трафик разрешённых соединений не требует отдельного зеркального правила. Доступ процесса к самому себе не используется как проверка межподовой изоляции.
+Ответы на разрешённые запросы отдельно открывать не нужно.
 
-Служебные исключения также входят в модель доступа:
-
-- DNS: UDP/TCP 53 к CoreDNS в `kube-system` для подов namespace `shop`.
-- CloudNativePG: оператору необходим доступ к instance manager базы (TCP 8000); подам базы — к Kubernetes API. Адреса API и метки оператора проверили перед применением правил.
-- Мониторинг: существующий Prometheus собирает метрики Hubble с нод на TCP 9965; это отдельный маршрут, не доступ к подам приложения.
-- Внешний NodePort: в финальной конфигурации разрешили источник `172.18.0.1/32` к API на TCP 8000. Ниже разобрали, почему адрес зависит от маршрутизации и SNAT.
-
-Остальной входящий и исходящий трафик namespace `shop` должен быть запрещён. Метки выступают селекторами политики; право назначать эти метки должно контролироваться отдельно через доступ к Kubernetes API.
+Ещё оставили DNS, доступ оператора CloudNativePG к базе и самой базы к Kubernetes API, чтобы они продолжали работать. Доступ с ноутбука через NodePort разобрали ниже.
 
 ## Часть 4 — Сетевые политики
 
-Политики добавили в шаблон `charts/shop/templates/networkpolicy.yaml`, а метки, порты и адреса вынесли в `values.yaml`. Файл `experiments/zero-trust.yaml` включает ограничения. Сначала применили default-deny для входящих и исходящих соединений, затем разрешения для клиента, API, worker, PostgreSQL и DNS. После применения все поды оставались Ready, а CloudNativePG показывал `Cluster in healthy state`.
+Добавили политики в [шаблон Helm](charts/shop/templates/networkpolicy.yaml), а их настройки вынесли в [values.yaml](charts/shop/values.yaml). Включаются они через [zero-trust.yaml](experiments/zero-trust.yaml).
 
-Позже обычное DNS-правило заменили CiliumNetworkPolicy для наблюдения DNS-запросов, а для внешнего клиента добавили `nodeport-entry`. В финальном варианте получились шесть NetworkPolicy и одна CiliumNetworkPolicy. Ответные пакеты разрешённых соединений отдельно не открывали.
+Сначала запретили весь входящий и исходящий трафик в `shop` через default-deny. Затем разрешили связи из таблицы и служебный трафик. Все поды остались `Ready`, база тоже работала.
+
+<details>
+<summary>Применение через Helm</summary>
 
 ~~~bash
 helm upgrade shop lab5-networking/charts/shop \
@@ -128,144 +143,188 @@ helm upgrade shop lab5-networking/charts/shop \
   --wait --timeout 3m
 ~~~
 
-`monitoring.enabled=false` отключает унаследованные шаблоны метрик приложения. Сетевой мониторинг из части 7 применяли отдельно в существующий кластер Prometheus.
+`monitoring.enabled=false` отключает шаблоны мониторинга приложения, оставшиеся от третьей лабы. Сетевые метрики подключали отдельно к уже работающему Prometheus.
 
-## Часть 5 — Проверка матрицы
+</details>
 
-Матрицу проверили скриптом `python3 lab5-networking/scripts/03-access-matrix.py`. Первый успешный прогон сохранили в `report/evidence/matrix-20261025-223429`, итоговый после настройки NodePort — в `report/evidence/matrix-20261025-231648`.
+Позже добавили правило `nodeport-entry` для внешнего клиента и заменили обычное разрешение DNS на CiliumNetworkPolicy, чтобы видеть DNS-запросы. В итоговой конфигурации получилось шесть NetworkPolicy и одна CiliumNetworkPolicy.
 
-Все 12 проверенных направлений от клиента, постороннего пода, API и worker к API, worker и PostgreSQL совпали с ожиданиями. Проверки API → API и worker → worker выполнялись между разными подами. Разрешённые TCP-соединения устанавливались, запрещённые завершались таймаутом. Дополнительно терминал получил HTTP 200 через DNS Service, а API и worker выполнили `SELECT 1` в PostgreSQL.
+## Часть 5 — Проверка доступа
 
-| Источник | Получатель | Ожидали | Получили | Результат |
-| --- | --- | --- | --- | --- |
-| client | api | ALLOW | ALLOW | PASS |
-| client | worker | DENY | DENY | PASS |
-| client | postgres | DENY | DENY | PASS |
-| camera | api | DENY | DENY | PASS |
-| camera | worker | DENY | DENY | PASS |
-| camera | postgres | DENY | DENY | PASS |
-| api | api | DENY | DENY | PASS |
-| api | worker | DENY | DENY | PASS |
-| api | postgres | ALLOW | ALLOW | PASS |
-| worker | api | DENY | DENY | PASS |
-| worker | worker | DENY | DENY | PASS |
-| worker | postgres | ALLOW | ALLOW | PASS |
+Запустили [03-access-matrix.py](scripts/03-access-matrix.py). Скрипт пробует соединения из клиентского и постороннего подов, API и worker. Все 12 направлений совпали с ожиданиями.
 
-<a href="report/screenshots/05-access-matrix.png"><img src="report/screenshots/05-access-matrix.png" width="850"></a>
-
-Этот прогон не проверяет исходящие соединения от PostgreSQL и внешнего клиента NodePort. Они проверены отдельно ниже.
-
-Из контейнера PostgreSQL отдельно попробовали открыть TCP-соединения через Python `socket.create_connection` с таймаутом 3 секунды:
-
-| Источник | Назначение | Ожидание | Наблюдение |
+| Источник | Получатель | Ожидали | Получили |
 | --- | --- | --- | --- |
-| PostgreSQL | API `10.244.1.165:8000` | DENY | TIMEOUT |
-| PostgreSQL | worker `10.244.1.173:8000` | DENY | TIMEOUT |
+| client | api | ALLOW | ALLOW |
+| client | worker | DENY | DENY |
+| client | postgres | DENY | DENY |
+| camera | api | DENY | DENY |
+| camera | worker | DENY | DENY |
+| camera | postgres | DENY | DENY |
+| api | api | DENY | DENY |
+| api | worker | DENY | DENY |
+| api | postgres | ALLOW | ALLOW |
+| worker | api | DENY | DENY |
+| worker | worker | DENY | DENY |
+| worker | postgres | ALLOW | ALLOW |
 
-Использовались IP подов, поэтому разрешение DNS не влияло на результат. Таймауты соответствуют целевой матрице. В Hubble видны отброшенные потоки от БД к API и worker на TCP 8000. Для выбранного потока `shop-db-1 → shop-worker-85bfb59f55-hx9w7` детали подтверждают `dropped`, `Policy denied`, направление `egress`: соединение блокируется исходящей политикой БД. Межрепличная связь PostgreSQL не проверялась: экземпляр БД один.
-
-<a href="report/screenshots/18-postgres-egress-denied.png"><img src="report/screenshots/18-postgres-egress-denied.png" width="850"></a>
-
-В Hubble наблюдаются разрешённые потоки worker → PostgreSQL:5432 (`forwarded`) и запрещённые направления из тестовой матрицы (`dropped`), в том числе клиент → worker:8000. Интерфейс показывает подключение к трём нодам. В деталях отдельного потока `panda-client → shop-db-1:5432` показаны `Verdict: dropped`, `Drop reason: Policy denied` и `Traffic direction: egress`. Это подтверждает блокировку исходящего соединения сетевой политикой, соответствующую целевой матрице.
+Разрешённые TCP-соединения открылись, запрещённые завершились таймаутом. Проверили и само приложение: клиент получил HTTP 200 через DNS Service, API и worker выполнили `SELECT 1` в PostgreSQL.
 
 <details>
-<summary>Карта трафика Hubble</summary>
+<summary>Вывод проверки матрицы</summary>
 
-<a href="report/screenshots/06-hubble-map.png"><img src="report/screenshots/06-hubble-map.png" width="850"></a>
+В выводе скрипта сравнили `EXPECTED` и `ACTUAL`. Везде `PASS`, в том числе там, где соединение должно быть запрещено.
+
+<a href="report/screenshots/05-access-matrix.png"><img src="report/screenshots/05-access-matrix.png" width="800"></a>
+
+На скриншоте [первый успешный прогон](report/evidence/matrix-initial). После настройки NodePort повторили проверку, [итоговый результат](report/evidence/matrix-final/matrix.md) остался таким же.
 
 </details>
 
-<details>
-<summary>Запрещённые потоки Hubble</summary>
+В Hubble выбрали запрос `panda-client → shop-db-1:5432` и открыли Flow Details справа. Там указано `Policy denied`, направление `egress`. Запрос остановила исходящая политика клиента.
 
-<a href="report/screenshots/07-hubble-dropped.png"><img src="report/screenshots/07-hubble-dropped.png" width="850"></a>
+<a href="report/screenshots/06-policy-denied.png"><img src="report/screenshots/06-policy-denied.png" width="960"></a>
+
+<details>
+<summary>Общая карта и запрещённые потоки</summary>
+
+Открыли карту namespace `shop` в Hubble. База здесь подписана как `shop`; в таблице под картой видны разрешённые обращения worker к ней на порт 5432 (`forwarded`).
+
+<a href="report/screenshots/07-hubble-map.png"><img src="report/screenshots/07-hubble-map.png" width="900"></a>
 
 </details>
 
-<a href="report/screenshots/08-policy-denied.png"><img src="report/screenshots/08-policy-denied.png" width="850"></a>
-
-### Проверка внешнего NodePort после включения политик
-
-Запрос с ноутбука к `127.0.0.1:28000/health` завершался таймаутом. В Hubble он наблюдался как `world → api:8000`, `Policy denied`, направление `ingress`, адрес источника `10.244.1.121`. Проверка `ip -4 addr show cilium_host` на `lab5-worker` подтвердила, что это адрес интерфейса Cilium ноды входа, а не пода приложения.
-
-Сначала добавили разрешение `nodeport-entry` для `10.244.1.121/32` — оно не восстановило доступ. В ipcache этот адрес имел identity host на ноде входа и remote-node на соседних нодах.
-
-После переключения Service API на `externalTrafficPolicy: Local` Hubble показал источник `172.18.0.1` (шлюз Docker-сети kind), локальный под API и ingress-блокировку `Policy denied`. В чарте закрепили режим Local и разрешение только `172.18.0.1/32` к API на TCP 8000. После применения Helm revision 8 внешний запрос к `127.0.0.1:28000/health` вернул `ok`, HTTP 200. Повторная проверка `matrix-20261025-231648` дала 12/12 PASS: разрешённые связи работают, запрещённые остаются заблокированными. Дополнительно подтверждены HTTP 200 через DNS из клиента и SQL `SELECT 1` из API и worker. Результаты сохранены в `report/evidence/matrix-20261025-231648/`.
-
-Режим Local требует готового API-пода на `lab5-worker`, куда опубликован порт: без локального endpoint внешний доступ пропадёт. Поэтому результаты предыдущего chaos-теста с режимом Cluster нельзя автоматически переносить на эту конфигурацию. Адрес шлюза не идентифицирует конкретного пользователя; Docker публикует порт только на loopback ноутбука. После пересоздания сети адрес нужно проверить.
-
-<a href="report/screenshots/17-nodeport-local-source.png"><img src="report/screenshots/17-nodeport-local-source.png" width="850"></a>
+Из самой базы отдельно попробовали подключиться к API и worker. Оба запроса завершились таймаутом, а Hubble подтвердил блокировку исходящей политикой PostgreSQL.
 
 <details>
-<summary>Блокировка NodePort</summary>
+<summary>Проверка исходящего доступа из PostgreSQL</summary>
 
-<a href="report/screenshots/15-nodeport-blocked.png"><img src="report/screenshots/15-nodeport-blocked.png" width="850"></a>
+В контейнере БД использовали Python `socket.create_connection` с таймаутом 3 секунды. Обращались к `10.244.1.165:8000` (API) и `10.244.1.173:8000` (worker) напрямую по IP, чтобы не зависеть от DNS.
+
+На скриншоте выбран поток от `shop-db-1` к worker: `Policy denied`, направление `egress`.
+
+<a href="report/screenshots/08-postgres-egress-denied.png"><img src="report/screenshots/08-postgres-egress-denied.png" width="960"></a>
 
 </details>
 
-<details>
-<summary>Адрес источника NodePort и ingress-блокировка</summary>
+### Что случилось с NodePort
 
-<a href="report/screenshots/16-nodeport-source.png"><img src="report/screenshots/16-nodeport-source.png" width="850"></a>
+Внутри кластера проверки прошли, а с ноутбука API не отвечал: запрос на `127.0.0.1:28000/health` заканчивался таймаутом. Посмотрели в Hubble и увидели, что запрос блокируется на входе в API. При этом адресом отправителя был `10.244.1.121`. Это адрес интерфейса `cilium_host` на ноде, через которую пришёл запрос.
+
+Попробовали разрешить этот IP в правиле `nodeport-entry`, но ничего не изменилось. Проверили ipcache: Cilium распознавал его как адрес ноды (`host` или `remote-node`).
+
+<details>
+<summary>Блокировка и адрес источника до переключения режима</summary>
+
+В Hubble внешний запрос отображается как `world → api`. Открыли одну попытку в Flow Details: справа видны блокировка `ingress` и адрес источника `10.244.1.121`.
+
+<a href="report/screenshots/09-nodeport-source.png"><img src="report/screenshots/09-nodeport-source.png" width="960"></a>
 
 </details>
 
-## Часть 6 — Диагностика скрытой поломки
+Тогда переключили Service на `externalTrafficPolicy: Local`, чтобы запрос обслуживал API на той же ноде. В Hubble появился другой адрес отправителя, `172.18.0.1`. Это шлюз Docker-сети kind. На скрине запрос пока заблокирован, но теперь стало понятно, какой адрес добавить в разрешение.
 
-Скрипт `scripts/04-break-network.py` выбирает один из трёх вариантов: неверный порт исходящего разрешения клиента, неверная метка клиента во входящем разрешении API или исключение клиента из разрешения DNS. Изменения применяются через Helm values; исходные значения и внесённая поломка сохраняются в `report/evidence/fault-*`.
+<a href="report/screenshots/10-nodeport-local-source.png"><img src="report/screenshots/10-nodeport-local-source.png" width="960"></a>
 
-В эксперименте `fault-20261025-224119` запустили `scripts/05-fault-probe.sh` и увидели в Hubble потоки `panda-client-fault → api:8000` с `Policy denied`, направлением `egress` и флагом TCP SYN. Это локализовало отказ на исходящем разрешении клиента, до HTTP-обработки запроса API.
+Разрешили `172.18.0.1/32` обращаться к API на TCP 8000. После применения запрос с ноутбука вернул `HTTP 200 ok`. Снова прогнали матрицу: все 12 проверок прошли, доступ через DNS и запросы к базе тоже работали. [Результаты сохранили здесь](report/evidence/matrix-final).
 
-Затем посмотрели values внесённой поломки: в политике `client` разрешён TCP-порт **8001** вместо **8000**. Метки адресата соответствуют API, но порт запроса не совпадает с разрешённым; default-deny блокирует соединение. Исправление — восстановить разрешение TCP 8000 из исходных значений чарта.
+Теперь запрос с ноутбука может попасть только в API на `lab5-worker`. Если на этой ноде не останется готового пода API, запрос не пройдёт, даже если на другой ноде API работает.
 
-<a href="report/screenshots/09-network-fault.png"><img src="report/screenshots/09-network-fault.png" width="850"></a>
+## Часть 6 — Поиск поломки через Hubble
 
-Исходные правила восстановили через `helm upgrade --reset-values` с `experiments/zero-trust.yaml` и отключёнными шаблонами мониторинга приложения. После восстановления тестовый клиент успешно создал шесть заданий (HTTP 201). Повторный прогон `matrix-20261025-224334` показал PASS для всех 12 направлений; запрос через DNS вернул HTTP 200, API и worker выполнили `SELECT 1`. Ответы создания заданий содержат `status=pending`: этот снимок подтверждает их приём, но не завершение обработки worker.
+[Скриптом](scripts/04-break-network.py) внесли одну случайную ошибку через Helm values:
 
-<a href="report/screenshots/10-network-restored.png"><img src="report/screenshots/10-network-restored.png" width="850"></a>
+- Неверный порт (клиенту разрешён доступ на 8001 вместо 8000).
+- Неверная метка клиента (правило API больше не разрешает запросы от нашего клиента).
+- Запрет DNS (клиент не может узнать IP сервиса по имени).
+
+Какой вариант выпал, сразу не смотрели. Запустили [проверочные запросы](scripts/05-fault-probe.sh) и открыли Hubble.
+
+На карте осталась связь клиента с API на порту 8000. Открыли заблокированный запрос: в Flow Details указано `Policy denied` и `egress`. Значит, сначала стоит проверить исходящее правило клиента.
+
+<a href="report/screenshots/11-network-fault.png"><img src="report/screenshots/11-network-fault.png" width="960"></a>
+
+После этого проверили [сохранённые values](report/evidence/fault-wrong-port/fault-values.yaml). В разрешении клиента оказался порт 8001 вместо 8000. Метки API были правильные, но под нужный порт правило не подходило.
+
+Вернули исходные значения через `helm upgrade --reset-values` с `zero-trust.yaml` и отключённым мониторингом приложения. Клиент снова смог отправить задания: все шесть получили HTTP 201. Повторная проверка матрицы дала 12 из 12 PASS, запрос через DNS и `SELECT 1` тоже прошли.
+
+В терминале сверху видны шесть ответов `201`, ниже результаты повторной проверки. Задания ещё в `pending`, здесь проверили только их приём.
+
+<a href="report/screenshots/12-network-restored.png"><img src="report/screenshots/12-network-restored.png" width="850"></a>
 
 ## Часть 7 — Мониторинг
 
-Для мониторинга использовали существующий kube-prometheus-stack в Minikube `panda-monitoring`; новый стек в `kind-lab5` не устанавливался. При запуске Minikube CRI-плагин containerd не загрузился из-за `failed to create fsnotify watcher: too many open files`. После временного увеличения на хосте `fs.inotify.max_user_instances` с 128 до 1024 и `fs.inotify.max_user_watches` с 65536 до 1048576, а также перезапуска containerd, CRI восстановился и поды мониторинга стали Ready. Эти изменения sysctl не сохраняются после перезагрузки хоста.
+Использовали готовый kube-prometheus-stack в Minikube `panda-monitoring`. Само приложение осталось в `kind-lab5`.
 
-Контейнер Minikube дополнительно подключили к Docker-сети `kind`, что обеспечило доступ к адресам нод `172.18.0.2`, `172.18.0.3`, `172.18.0.4`. Cilium экспортирует метрики Hubble на TCP 9965. Шаблон `charts/shop/templates/external-hubble.yaml` создаёт Service без selector, Endpoints с адресами нод и ServiceMonitor в кластере мониторинга. Шаблон рендерится отдельно из чарта shop; весь чарт приложения в Minikube не устанавливается.
-
-В Prometheus запрос `up{service="shop-lab5-hubble"}` вернул три серии со значением 1, метками `job="lab5-hubble"` и `cluster="kind-lab5"`. Таким образом проверен сбор метрик самим Prometheus со всех трёх нод.
+Minikube сначала не запустился из-за лимитов inotify. Увеличили их на хосте и перезапустили containerd, после этого мониторинг заработал.
 
 <details>
-<summary>Три доступные цели Hubble</summary>
+<summary>Ошибка запуска Minikube</summary>
 
-<a href="report/screenshots/11-hubble-targets.png"><img src="report/screenshots/11-hubble-targets.png" width="850"></a>
+Containerd не запускался из-за ошибки `failed to create fsnotify watcher: too many open files`. Ему не хватало системного лимита на отслеживание изменений файлов. Подняли лимиты inotify и перезапустили containerd, после этого всё заработало.
 
 </details>
 
-Для DNS-наблюдаемости обычное разрешение DNS заменено шаблоном `dns-visibility.yaml` с CiliumNetworkPolicy: DNS TCP/UDP 53 разрешён только к CoreDNS в `kube-system`, правило `matchPattern: "*"` включает разбор DNS через прокси. Остальные сетевые разрешения остаются NetworkPolicy.
+Чтобы Prometheus видел ноды другого кластера, подключили контейнер Minikube к Docker-сети `kind`. Cilium отдаёт метрики Hubble на каждой ноде через порт 9965.
 
-После применения в Prometheus появились `hubble_dns_queries_total`, `hubble_dns_responses_total` и `hubble_dns_response_types_total`. Это подтверждает поступление DNS-метрик; значения на скриншоте — количество временных рядов, а не число запросов.
+<a href="report/diagrams/hubble-monitoring.svg"><img src="report/diagrams/hubble-monitoring.svg" width="720"></a>
+
+Через [external-hubble.yaml](charts/shop/templates/external-hubble.yaml) указали Prometheus, откуда забирать метрики Hubble.
 
 <details>
-<summary>DNS-метрики Hubble</summary>
+<summary>Проверка сбора метрик в Prometheus</summary>
 
-<a href="report/screenshots/12-dns-metrics.png"><img src="report/screenshots/12-dns-metrics.png" width="850"></a>
+В разделе Query выполнили `up{service="shop-lab5-hubble"}`. У всех трёх нод значение 1, значит, Prometheus успешно забирает метрики.
+
+<a href="report/screenshots/13-hubble-targets.png"><img src="report/screenshots/13-hubble-targets.png" width="900"></a>
 
 </details>
 
-Дашборд `PandaRecovery — сеть и политики` добавили через шаблон `network-dashboard.yaml`, JSON хранится в `dashboards/lab5-network.json`. Он показывает доступность трёх целей Hubble, наблюдаемые TCP SYN, блокировки политиками, TCP RST, DNS-ответы по кодам и ошибки DNS.
+### DNS и дашборд
 
-<a href="report/screenshots/13-network-dashboard.png"><img src="report/screenshots/13-network-dashboard.png" width="850"></a>
+Чтобы видеть DNS-запросы в Hubble, включили DNS-прокси через [CiliumNetworkPolicy](charts/shop/templates/dns-visibility.yaml). Разрешили любые имена (`matchPattern: "*"`), но обращаться можно только к CoreDNS.
 
-Три алерта заданы в `templates/network-alerts.yaml` как PrometheusRule и применены в существующем кластере мониторинга:
+<details>
+<summary>Проверка DNS-метрик</summary>
 
-| Алерт | Условие за 2 минуты, выдержка 30 секунд | Что обнаруживает и чем грозит |
+В том же окне Prometheus проверили наличие метрик `hubble_dns_*`. Появились запросы, ответы и типы ответов.
+
+<a href="report/screenshots/14-dns-metrics.png"><img src="report/screenshots/14-dns-metrics.png" width="900"></a>
+
+</details>
+
+В Grafana открыли [дашборд](charts/shop/dashboards/lab5-network.json). На нём собрали доступность Hubble, попытки TCP-соединений, блокировки, сбросы и DNS-ответы.
+
+Ниже данные за последние 30 минут.
+
+<a href="report/screenshots/15-network-dashboard.png"><img src="report/screenshots/15-network-dashboard.png" width="960"></a>
+
+Hubble считает события, одно соединение может дать таких несколько.
+
+### Алерты
+
+Добавили три правила в [network-alerts.yaml](charts/shop/templates/network-alerts.yaml). Для каждого считаем события за последние две минуты; условие должно держаться 30 секунд.
+
+| Алерт | Когда срабатывает | Зачем нужен |
 | --- | --- | --- |
-| `Lab5PolicyDenied` | Более 10 событий `POLICY_DENIED` из namespace shop | Повторные запрещённые обращения: возможны ошибочная политика или нежелательный источник трафика. Если заблокирована необходимая связь, задания не доходят до адресата. Требует проверки источника и назначения в Hubble. |
-| `Lab5TcpResets` | Более 20 наблюдаемых TCP RST к namespace shop | Повышенное число сбросов соединений. Может сопровождать отказы и прерывание запросов, но RST возможны и при штатном поведении клиентов; сигнал нужно сопоставлять с HTTP-ошибками и задержкой. |
-| `Lab5DnsErrors` | Более 5 DNS-ответов к shop с кодом, отличным от `No Error` | Ошибки разрешения имён, включая NXDOMAIN. Могут помешать поиску сервисов; ошибочные тестовые имена также способны вызвать сигнал. Полное отсутствие DNS-ответов это правило не обнаруживает. |
+| `Lab5PolicyDenied` | Больше 10 блокировок `POLICY_DENIED` из `shop` | Замечаем лишние обращения или ошибку в политике. |
+| `Lab5TcpResets` | Больше 20 TCP RST в сторону `shop` | Проверяем сбросы соединений. |
+| `Lab5DnsErrors` | Больше 5 DNS-ответов для `shop` с кодом ошибки | Замечаем ошибки разрешения имён. |
 
-Пороги учебные, не откалиброваны под производственную нагрузку. Счётчики Hubble отражают наблюдаемые события, не уникальные соединения или пользовательские запросы. DNS-панель использует нулевое значение при отсутствии серий ошибок; её нужно читать вместе с доступностью целей и потоком DNS-ответов.
+Пороги выбрали для учебного стенда. Проверили срабатывание повторными запусками матрицы: в ней достаточно заведомо запрещённых обращений.
 
-Чтобы проверить алерты, несколько раз запустили проверку матрицы. Она создаёт в том числе заведомо запрещённые обращения. На скриншоте `Lab5PolicyDenied` находится в Firing (около 244,6 событий за окно), `Lab5TcpResets` также в Firing (около 379,4), `Lab5DnsErrors` — Inactive. Дробные значения получаются из-за экстраполяции функции `increase`. Причина высокого фонового числа RST отдельно не установлена; это не доказательство неисправности API.
+В Prometheus открыли Alerts и группу `shop.lab5.network`. `Lab5PolicyDenied` и `Lab5TcpResets` перешли в `Firing`, DNS-алерт остался `Inactive`.
 
-<a href="report/screenshots/14-network-alert.png"><img src="report/screenshots/14-network-alert.png" width="850"></a>
+<a href="report/screenshots/16-network-alert.png"><img src="report/screenshots/16-network-alert.png" width="960"></a>
 
-Все три правила загрузились, два перешли в Firing. Возврат в Inactive после прекращения тестового трафика отдельно не фиксировали.
+<table>
+<tr><td align="center">
+
+<img src="report/story/1-back-to-cargo.png" width="560">
+
+<br>
+
+*Панды снова разложили на столе план палубы. Камера показывает груз, на соседнем экране идут графики сети. Проверки закончены, нужные соединения работают. «Сеть настроили. Теперь бы ещё контейнеры на палубе так же аккуратно разложить», — говорит механик и берёт карандаш.*
+
+</td></tr>
+</table>

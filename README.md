@@ -11,7 +11,7 @@
 | 3 — Control Plane | [lab3-control-plane](lab3-control-plane/README.md)|
 | 4 — Scheduling resources | [lab4-scheduling-resources](lab4-scheduling-resources/README-lab.md) |
 | 5 — Zero-trust сеть | [lab5-networking](lab5-networking/README.md) |
-| 6 — 
+| 6 — Service Mesh | 🐸
 | 7(8) — AI | [lab8-ai](lab8-ai/panda-release-brief/README.md) |
 
 

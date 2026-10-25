@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="330" viewBox="0 0 900 330">
+  <rect width="900" height="330" rx="16" fill="#ffffff"/>
+  <g font-family="Segoe UI, Arial, sans-serif" text-anchor="middle">
+    <rect x="12" y="12" width="876" height="306" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="450" y="43" font-size="20" font-weight="600" fill="#334155">Кластер kind на ноутбуке</text>
+    <text x="450" y="69" font-size="15" fill="#64748b">Три ноды в Docker-сети kind. Каждая работает в своём контейнере.</text>
+
+    <rect x="34" y="94" width="232" height="176" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-dasharray="6 4"/>
+    <text x="150" y="126" font-size="18" font-weight="600" fill="#9a3412">Управляющая нода</text>
+    <text x="150" y="150" font-size="14" fill="#9a3412">lab5-control-plane</text>
+    <rect x="50" y="176" width="200" height="65" rx="9" fill="#ffedd5"/>
+    <text x="150" y="204" font-size="16" fill="#7c2d12">Управление</text>
+    <text x="150" y="226" font-size="16" fill="#7c2d12">кластером</text>
+
+    <rect x="290" y="94" width="272" height="176" rx="12" fill="#eff6ff" stroke="#0284c7" stroke-dasharray="6 4"/>
+    <text x="426" y="126" font-size="18" font-weight="600" fill="#0c4a6e">Нода lab5-worker</text>
+    <text x="426" y="150" font-size="14" fill="#0c4a6e">kubelet + containerd</text>
+    <rect x="306" y="176" width="240" height="65" rx="9" fill="#e0f2fe" stroke="#7dd3fc"/>
+    <text x="426" y="204" font-size="16" font-weight="600" fill="#0c4a6e">Поды приложения</text>
+    <text x="426" y="226" font-size="15" fill="#0c4a6e">API, worker</text>
+
+    <rect x="586" y="94" width="280" height="176" rx="12" fill="#eff6ff" stroke="#0284c7" stroke-dasharray="6 4"/>
+    <text x="726" y="126" font-size="18" font-weight="600" fill="#0c4a6e">Нода lab5-worker2</text>
+    <text x="726" y="150" font-size="14" fill="#0c4a6e">kubelet + containerd</text>
+    <rect x="602" y="176" width="248" height="65" rx="9" fill="#e0f2fe" stroke="#7dd3fc"/>
+    <text x="726" y="204" font-size="16" font-weight="600" fill="#0c4a6e">Поды приложения</text>
+    <text x="726" y="226" font-size="15" fill="#0c4a6e">API, worker, PostgreSQL</text>
+
+    <text x="576" y="298" font-size="16" fill="#0f766e">Сеть подов: Cilium</text>
+  </g>
+</svg>

@@ -16,8 +16,11 @@ printf '\nSource: %s on lab5-worker\nTarget: %s on lab5-worker2 (%s)\n' "$source
 "${K[@]}" -n shop exec "$source_pod" -- python -c '
 import fcntl, socket, struct
 from pathlib import Path
+
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-ip = socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack("256s", b"eth0"))[20:24])
+ip = socket.inet_ntoa(
+    fcntl.ioctl(s.fileno(), 0x8915, struct.pack("256s", b"eth0"))[20:24]
+)
 print("Inside pod: eth0 IP=" + ip)
 for name in ("ifindex", "iflink", "address"):
     print(name + "=" + Path("/sys/class/net/eth0/" + name).read_text().strip())
@@ -29,6 +32,7 @@ docker --context panda-host exec lab5-worker ip -o link show | awk -v peer="$pee
 printf '\nDirect cross-node request (without Service):\n'
 "${K[@]}" -n shop exec "$source_pod" -- python -c '
 import sys, urllib.request
+
 url = "http://" + sys.argv[1] + ":8000/health"
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 with opener.open(url, timeout=10) as response:
