@@ -28,37 +28,37 @@
 Подготовка стенда и установка приложения:
 
 ```bash
-bash lab3/scripts/00-tools.sh         # Скачать kubectl, Helm и kind в lab3/.tools
-bash lab3/scripts/01-cluster.sh       # Создать kind-кластер и добавить Helm-репозитории
-bash lab3/scripts/02-monitoring.sh    # Восстановить стек мониторинга из лабы 2, если его нет
-bash lab3/scripts/03-policies.sh      # Установить Kyverno, применить и проверить политики
-bash lab3/scripts/05-operator.sh      # Установить CloudNativePG
-bash lab3/scripts/06-shop.sh          # Собрать образы 1.0.0 и 1.1.0, установить shop
-bash lab3/scripts/12-smoke.sh         # Проверить создание и обработку 20 заказов
+bash lab3-control-plane/scripts/00-tools.sh         # Скачать kubectl, Helm и kind в lab3-control-plane/.tools
+bash lab3-control-plane/scripts/01-cluster.sh       # Создать kind-кластер и добавить Helm-репозитории
+bash lab3-control-plane/scripts/02-monitoring.sh    # Восстановить стек мониторинга из лабы 2, если его нет
+bash lab3-control-plane/scripts/03-policies.sh      # Установить Kyverno, применить и проверить политики
+bash lab3-control-plane/scripts/05-operator.sh      # Установить CloudNativePG
+bash lab3-control-plane/scripts/06-shop.sh          # Собрать образы 1.0.0 и 1.1.0, установить shop
+bash lab3-control-plane/scripts/12-smoke.sh         # Проверить создание и обработку 20 заказов
 ```
 
-Политики устанавливаются до чарта shop. Скрипты используют отдельный kubeconfig в `lab3/.state/kubeconfig` и контекст `kind-lab3`
+Политики устанавливаются до чарта shop. Скрипты используют отдельный kubeconfig в `lab3-control-plane/.state/kubeconfig` и контекст `kind-lab3`
 
 Проверки лабораторной запускаются последовательно, после завершения предыдущей:
 
 ```bash
-bash lab3/scripts/07-reconciliation.sh  # Восстановление API/PostgreSQL и масштабирование
-bash lab3/scripts/08-rolling-update.sh  # Обновление API с 1.0.0 на 1.1.0 без ошибок HTTP
-bash lab3/scripts/09-broken-rollback.sh # Сломанная версия и rollback
-bash lab3/scripts/10-control-plane.sh   # Остановка и восстановление apiserver
-bash lab3/scripts/11-alerts.sh          # Провокация firing и восстановление worker
-bash lab3/scripts/13-final-check.sh     # Проверка рабочего состояния после экспериментов
+bash lab3-control-plane/scripts/07-reconciliation.sh  # Восстановление API/PostgreSQL и масштабирование
+bash lab3-control-plane/scripts/08-rolling-update.sh  # Обновление API с 1.0.0 на 1.1.0 без ошибок HTTP
+bash lab3-control-plane/scripts/09-broken-rollback.sh # Сломанная версия и rollback
+bash lab3-control-plane/scripts/10-control-plane.sh   # Остановка и восстановление apiserver
+bash lab3-control-plane/scripts/11-alerts.sh          # Провокация firing и восстановление worker
+bash lab3-control-plane/scripts/13-final-check.sh     # Проверка рабочего состояния после экспериментов
 ```
 
 **Для повторной проверки rolling update** сначала нужно вернуть API на 1.0.0. Иначе при уже установленной 1.1.0 скрипт 08 не вызовет замену подов:
 
 ```bash
-source lab3/scripts/common.sh
-helm upgrade shop lab3/charts/shop -n shop --reuse-values \
+source lab3-control-plane/scripts/common.sh
+helm upgrade shop lab3-control-plane/charts/shop -n shop --reuse-values \
   --set-string api.image.tag=1.0.0 --set api.healthFail=false \
   --wait --timeout 4m
 kubectl rollout status deployment/shop-api -n shop --timeout=180s
-bash lab3/scripts/08-rolling-update.sh
+bash lab3-control-plane/scripts/08-rolling-update.sh
 ```
 
 После установки доступны:
@@ -71,7 +71,7 @@ bash lab3/scripts/08-rolling-update.sh
 | http://localhost:13000/d/shop-lab3 | Grafana: логин `admin`, пароль `panda-admin` из лабы 2 |
 | http://localhost:19090/alerts | Состояния алертов в Prometheus |
 
-Скрипты проверок сохраняют вывод в `lab3/report/evidence`. Повторный запуск перезаписывает соответствующие журналы
+Скрипты проверок сохраняют вывод в `lab3-control-plane/report/evidence`. Повторный запуск перезаписывает соответствующие журналы
 
 ## Часть 0 — Сервисы
 
