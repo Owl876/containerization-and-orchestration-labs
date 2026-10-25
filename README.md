@@ -8,7 +8,11 @@
 | --- | --- |
 | 1 — Свой Docker | [lab1-containerization](lab1-containerization/README.md) |
 | 2 — Observability | [lab2-observability](lab2-observability/README-lab.md) |
-| 3 - Control Plane | [lab3-control-plane](lab3-control-plane/README.md)|
+| 3 — Control Plane | [lab3-control-plane](lab3-control-plane/README.md)|
+| 4 — Scheduling resources | [lab4-scheduling-resources](lab4-scheduling-resources/README-lab.md) |
+| 6 — 
+| 7(8) — AI | [lab8-ai](lab8-ai/panda-release-brief/README.md) |
+
 
 <img src="assets/kuberpanda.png" alt="Панда-путешественница прибывает на тропический остров на грузовом судне" width="700">
 
