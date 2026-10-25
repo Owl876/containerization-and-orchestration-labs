@@ -1,0 +1,11 @@
+Checking /etc/prometheus/prometheus.yml
+  SUCCESS: 1 rule files found
+ SUCCESS: /etc/prometheus/prometheus.yml is valid prometheus config file syntax
+
+Checking /etc/prometheus/alerts.yml
+  SUCCESS: 3 rules found
+
+ Container panda-lab8-prometheus-run-83fc9c755d61 Creating 
+ Container panda-lab8-prometheus-run-83fc9c755d61 Created 
+  SUCCESS
+

@@ -1,0 +1,70 @@
+rule_files:
+  - alerts.yml
+evaluation_interval: 1m
+tests:
+  - name: sustained review errors fire
+    interval: 1m
+    input_series:
+      - series: 'panda_workflow_runs_total{status="success"}'
+        values: '0+8x20'
+      - series: 'panda_workflow_runs_total{status="error"}'
+        values: '0+4x20'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PandaReviewErrorRatio
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: 'More than 20% of release reviews fail'
+              description: 'Inspect agent logs, Ollama and MCP connectivity. BLOCKED decisions are successful reviews.'
+  - name: blocked releases do not count as execution errors
+    interval: 1m
+    input_series:
+      - series: 'panda_workflow_runs_total{status="success"}'
+        values: '0+10x20'
+      - series: 'panda_workflow_runs_total{status="error"}'
+        values: '0+0x20'
+      - series: 'panda_release_decisions_total{decision="blocked"}'
+        values: '0+10x20'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PandaReviewErrorRatio
+        exp_alerts: []
+  - name: high latency fires
+    interval: 1m
+    input_series:
+      - series: 'panda_workflow_duration_seconds_bucket{le="180"}'
+        values: '0+0x20'
+      - series: 'panda_workflow_duration_seconds_bucket{le="300"}'
+        values: '0+10x20'
+      - series: 'panda_workflow_duration_seconds_bucket{le="+Inf"}'
+        values: '0+10x20'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PandaReviewSlow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: 'Release review p95 exceeds 180 seconds'
+              description: 'Inspect CPU pressure, model latency and tool retries; 600 seconds is the hard run timeout.'
+  - name: dependency loss fires
+    interval: 1m
+    input_series:
+      - series: 'panda_dependency_up{dependency="knowledge"}'
+        values: '1 0+0x10'
+      - series: 'up{job="agent"}'
+        values: '1+0x11'
+      - series: 'up{job="n8n"}'
+        values: '1+0x11'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: PandaDependencyUnavailable
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              dependency: knowledge
+            exp_annotations:
+              summary: 'A release workflow dependency is unavailable'
+              description: 'Check n8n, the agent, both MCP servers and the configured Ollama model.'

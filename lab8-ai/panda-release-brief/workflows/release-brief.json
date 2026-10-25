@@ -1,0 +1,187 @@
+[
+  {
+    "updatedAt": "2026-10-24T20:47:26.000Z",
+    "createdAt": "2026-10-24T20:24:21.767Z",
+    "id": "pandaReleaseBrief8",
+    "name": "PandaRelease — release readiness brief",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "id": "trigger",
+        "name": "Release webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          0
+        ],
+        "webhookId": "panda-release-brief",
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "panda-release-brief",
+          "responseMode": "responseNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "normalize",
+        "name": "Normalize request (no AI)",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          260,
+          0
+        ],
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "release",
+                "name": "release_id",
+                "value": "={{ String($json.body?.release_id ?? \"\").trim() }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "agent",
+        "name": "AI agent — Ollama + two MCP servers",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          560,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://agent:8080/runs",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json) }}",
+          "options": {
+            "timeout": 620000,
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "respond",
+        "name": "Return saved report",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.4,
+        "position": [
+          880,
+          0
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json.body }}",
+          "options": {
+            "responseCode": "={{ $json.statusCode }}"
+          }
+        }
+      },
+      {
+        "id": "note",
+        "name": "Architecture",
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          180,
+          -300
+        ],
+        "parameters": {
+          "width": 850,
+          "height": 200,
+          "content": "## PandaRelease\nThe HTTP AI step calls a real bounded Ollama agent, not a canned response.\nIts four tools are discovered over MCP from release-mcp and knowledge-mcp.\nSkill: skills/release-review.md. The host enforces mandatory evidence and release checks.\nA BLOCKED decision is a successful review, not a workflow failure."
+        }
+      }
+    ],
+    "connections": {
+      "Release webhook": {
+        "main": [
+          [
+            {
+              "node": "Normalize request (no AI)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize request (no AI)": {
+        "main": [
+          [
+            {
+              "node": "AI agent — Ollama + two MCP servers",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI agent — Ollama + two MCP servers": {
+        "main": [
+          [
+            {
+              "node": "Return saved report",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "saveDataSuccessExecution": "all",
+      "saveDataErrorExecution": "all",
+      "executionTimeout": 660
+    },
+    "staticData": null,
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "1c2718bd-01fc-4107-8955-0a4c87011657",
+    "activeVersionId": "1c2718bd-01fc-4107-8955-0a4c87011657",
+    "versionCounter": 1,
+    "triggerCount": 1,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-10-24T20:24:21.770Z",
+        "createdAt": "2026-10-24T20:24:21.770Z",
+        "role": "workflow:owner",
+        "workflowId": "pandaReleaseBrief8",
+        "projectId": "hWB9cqhZQhNmXPig",
+        "project": {
+          "updatedAt": "2026-10-24T20:24:20.548Z",
+          "createdAt": "2026-10-24T20:24:20.548Z",
+          "id": "hWB9cqhZQhNmXPig",
+          "name": "Unnamed Project",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "d14700d7-221d-4d72-a11f-91eda1bd5a14"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  }
+]

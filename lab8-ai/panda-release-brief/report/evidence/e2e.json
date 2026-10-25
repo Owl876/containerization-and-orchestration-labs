@@ -1,0 +1,210 @@
+{
+  "results": [
+    {
+      "report_id": "b174dc33e62942348860c875e7d70931",
+      "release_id": "1.1.0",
+      "decision": "ready",
+      "model": "qwen2.5:3b",
+      "report_file": "b174dc33e62942348860c875e7d70931.md",
+      "markdown": "# PandaRecovery release 1.1.0\n\n- Report: `b174dc33e62942348860c875e7d70931`\n- Policy decision: **READY**\n- Scope: readiness review; this report does not deploy or approve a release.\n\n## Mandatory checks (authoritative)\n\n- pipeline: `passed`\n- tests: `passed`\n- image_scan: `passed`\n- staging_smoke: `passed`\n- approval: `approved`\n- Rollback: Deploy app:1.0.0; the additive index is compatible with both versions.\n\n## Blocking reasons\n\nNone.\n\n## AI analysis (advisory)\n\n### Release 1.1.0\n\n#### Changes:\n- [ ] Feature A (PR-41)\n- [ ] Feature B (PR-42)\n\n#### Risks:\n- [ ] Queue processing latency may increase (PR-41)\n- [ ] CREATE INDEX CONCURRENTLY is backward compatible (PR-42)\n\n#### Rollback Plan:\n- [ ] Deploy app:1.0.0\n\n#### Checks:\n- [x] Pipeline=passed\n- [x] Tests=passed\n- [x] Image scan=passed\n- [x] Staging smoke=passed\n- [x] Approval=approved\n\n#### Policy Decision:\n- [ ] Policy A\n- [ ] Policy B\n\n## Evidence obtained through MCP\n\n```json\n{\n  \"get_release\": {\n    \"release_id\": \"1.1.0\",\n    \"service\": \"pandarecovery\",\n    \"owner\": \"platform-team\",\n    \"commit\": \"7ad8b12\",\n    \"changes\": [\n      {\n        \"id\": \"PR-41\",\n        \"title\": \"Retry transient worker failures with bounded exponential backoff\",\n        \"risk\": \"Queue processing latency may increase\"\n      },\n      {\n        \"id\": \"PR-42\",\n        \"title\": \"Add PostgreSQL index on pending recovery jobs\",\n        \"risk\": \"CREATE INDEX CONCURRENTLY is backward compatible\"\n      }\n    ],\n    \"rollback\": \"Deploy app:1.0.0; the additive index is compatible with both versions.\"\n  },\n  \"get_checks\": {\n    \"release_id\": \"1.1.0\",\n    \"pipeline\": \"passed\",\n    \"tests\": \"passed\",\n    \"image_scan\": \"passed\",\n    \"staging_smoke\": \"passed\",\n    \"approval\": \"approved\"\n  },\n  \"read_runbook\": {\n    \"service\": \"pandarecovery\",\n    \"policy\": \"# PandaRecovery release readiness policy\\n\\nThis is a read-only readiness review, never a deployment approval or a deploy action.\\n\\nAll five checks are mandatory: pipeline=passed, tests=passed, image_scan=passed,\\nstaging_smoke=passed and approval=approved. A non-empty rollback plan is mandatory.\\nA missing field or any other value blocks the release. Unknown releases must fail.\\n\\nFor a schema change, explain compatibility with the previous application version.\\nFor retry changes, mention queue latency and worker saturation during observation.\\nIf checks fail, name the failed checks and the team action required before re-review.\\nNever invent successful checks, metrics, test results or a rollback plan.\\n\"\n  }\n}\n```\n",
+      "tool_trace": [
+        {
+          "server": "release",
+          "tool": "get_release",
+          "status": "success",
+          "duration_seconds": 0.01
+        },
+        {
+          "server": "release",
+          "tool": "get_checks",
+          "status": "success",
+          "duration_seconds": 0.005
+        },
+        {
+          "server": "knowledge",
+          "tool": "read_runbook",
+          "status": "success",
+          "duration_seconds": 0.007
+        },
+        {
+          "server": "knowledge",
+          "tool": "write_report",
+          "status": "error",
+          "error": "Read the collected tool results, then call write_report in the next turn"
+        },
+        {
+          "server": "knowledge",
+          "tool": "write_report",
+          "status": "success",
+          "duration_seconds": 0.01
+        }
+      ],
+      "llm_turns": 2,
+      "duration_seconds": 47.736
+    },
+    {
+      "report_id": "5ef23195c8ff438fa4280e306737f287",
+      "release_id": "1.2.0",
+      "decision": "blocked",
+      "model": "qwen2.5:3b",
+      "report_file": "5ef23195c8ff438fa4280e306737f287.md",
+      "markdown": "# PandaRecovery release 1.2.0\n\n- Report: `5ef23195c8ff438fa4280e306737f287`\n- Policy decision: **BLOCKED**\n- Scope: readiness review; this report does not deploy or approve a release.\n\n## Mandatory checks (authoritative)\n\n- pipeline: `failed`\n- tests: `passed`\n- image_scan: `failed`\n- staging_smoke: `failed`\n- approval: `pending`\n- Rollback: MISSING\n\n## Blocking reasons\n\n- pipeline=failed\n- image_scan=failed\n- staging_smoke=failed\n- approval=pending\n- rollback plan missing\n\n## AI analysis (advisory)\n\n## Release Review for Pandarecovery 1.2.0\n\n### Changes\n- PR-51: Drop legacy jobs.payload column and use payload_v2 (Destructive schema migration; app:1.1.0 still reads payload)\n- PR-52: Upgrade worker base image (Critical vulnerability found in image scan)\n\n### Risks\n- PR-51: Destructive schema migration\n- PR-52: Critical vulnerability\n\n### Checks\n- Pipeline: failed\n- Tests: passed\n- Image Scan: failed\n- Staging Smoke: failed\n- Approval: pending\n\n### Policy\n- All five checks are mandatory: pipeline=passed, tests=passed, image_scan=passed, staging_smoke=passed and approval=approved. A non-empty rollback plan is mandatory.\n- For a schema change, explain compatibility with the previous application version.\n- For retry changes, mention queue latency and worker saturation during observation.\n- If checks fail, name the failed checks and the team action required before re-review.\n- Never invent successful checks, metrics, test results or a rollback plan.\n\n### Next Actions\n- PR-51 requires a rollback plan to ensure compatibility with app:1.1.0.\n- PR-52 requires addressing the critical vulnerability.\n- The pipeline, tests, image scan, and staging smoke checks are pending.\n- The approval check is pending.\n\n\n## Evidence obtained through MCP\n\n```json\n{\n  \"get_release\": {\n    \"release_id\": \"1.2.0\",\n    \"service\": \"pandarecovery\",\n    \"owner\": \"platform-team\",\n    \"commit\": \"9bc3a27\",\n    \"changes\": [\n      {\n        \"id\": \"PR-51\",\n        \"title\": \"Drop legacy jobs.payload column and use payload_v2\",\n        \"risk\": \"Destructive schema migration; app:1.1.0 still reads payload\"\n      },\n      {\n        \"id\": \"PR-52\",\n        \"title\": \"Upgrade worker base image\",\n        \"risk\": \"Critical vulnerability found in image scan\"\n      }\n    ],\n    \"rollback\": \"\"\n  },\n  \"get_checks\": {\n    \"release_id\": \"1.2.0\",\n    \"pipeline\": \"failed\",\n    \"tests\": \"passed\",\n    \"image_scan\": \"failed\",\n    \"staging_smoke\": \"failed\",\n    \"approval\": \"pending\"\n  },\n  \"read_runbook\": {\n    \"service\": \"pandarecovery\",\n    \"policy\": \"# PandaRecovery release readiness policy\\n\\nThis is a read-only readiness review, never a deployment approval or a deploy action.\\n\\nAll five checks are mandatory: pipeline=passed, tests=passed, image_scan=passed,\\nstaging_smoke=passed and approval=approved. A non-empty rollback plan is mandatory.\\nA missing field or any other value blocks the release. Unknown releases must fail.\\n\\nFor a schema change, explain compatibility with the previous application version.\\nFor retry changes, mention queue latency and worker saturation during observation.\\nIf checks fail, name the failed checks and the team action required before re-review.\\nNever invent successful checks, metrics, test results or a rollback plan.\\n\"\n  }\n}\n```\n",
+      "tool_trace": [
+        {
+          "server": "release",
+          "tool": "get_release",
+          "status": "success",
+          "duration_seconds": 0.007
+        },
+        {
+          "server": "release",
+          "tool": "get_checks",
+          "status": "success",
+          "duration_seconds": 0.004
+        },
+        {
+          "server": "knowledge",
+          "tool": "read_runbook",
+          "status": "success",
+          "duration_seconds": 0.006
+        },
+        {
+          "server": "knowledge",
+          "tool": "write_report",
+          "status": "success",
+          "duration_seconds": 0.009
+        }
+      ],
+      "llm_turns": 2,
+      "duration_seconds": 31.574
+    }
+  ],
+  "invalid_request": {
+    "error": "Expected {\"release_id\":\"X.Y.Z\"}; no extra fields"
+  },
+  "unknown_release": {
+    "detail": "Unknown release"
+  },
+  "prometheus_targets": {
+    "status": "success",
+    "data": {
+      "activeTargets": [
+        {
+          "discoveredLabels": {
+            "__address__": "agent:8080",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "5s",
+            "__scrape_timeout__": "5s",
+            "job": "agent"
+          },
+          "labels": {
+            "instance": "agent:8080",
+            "job": "agent"
+          },
+          "scrapePool": "agent",
+          "scrapeUrl": "http://agent:8080/metrics",
+          "globalUrl": "http://agent:8080/metrics",
+          "lastError": "",
+          "lastScrape": "2026-10-25T17:45:10.028329146Z",
+          "lastScrapeDuration": 0.003247541,
+          "health": "up",
+          "scrapeInterval": "5s",
+          "scrapeTimeout": "5s"
+        },
+        {
+          "discoveredLabels": {
+            "__address__": "n8n:5678",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "5s",
+            "__scrape_timeout__": "5s",
+            "job": "n8n"
+          },
+          "labels": {
+            "instance": "n8n:5678",
+            "job": "n8n"
+          },
+          "scrapePool": "n8n",
+          "scrapeUrl": "http://n8n:5678/metrics",
+          "globalUrl": "http://n8n:5678/metrics",
+          "lastError": "",
+          "lastScrape": "2026-10-25T17:45:11.895979344Z",
+          "lastScrapeDuration": 0.012704791,
+          "health": "up",
+          "scrapeInterval": "5s",
+          "scrapeTimeout": "5s"
+        },
+        {
+          "discoveredLabels": {
+            "__address__": "localhost:9090",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "5s",
+            "__scrape_timeout__": "5s",
+            "job": "prometheus"
+          },
+          "labels": {
+            "instance": "localhost:9090",
+            "job": "prometheus"
+          },
+          "scrapePool": "prometheus",
+          "scrapeUrl": "http://localhost:9090/metrics",
+          "globalUrl": "http://4c3dbf679c42:9090/metrics",
+          "lastError": "",
+          "lastScrape": "2026-10-25T17:45:10.550091983Z",
+          "lastScrapeDuration": 0.006173059,
+          "health": "up",
+          "scrapeInterval": "5s",
+          "scrapeTimeout": "5s"
+        }
+      ],
+      "droppedTargets": [],
+      "droppedTargetCounts": {
+        "agent": 0,
+        "n8n": 0,
+        "prometheus": 0
+      }
+    }
+  },
+  "dashboard_graphs": {
+    "runs": [
+      {
+        "metric": {},
+        "value": [
+          1792950314.1,
+          "3"
+        ]
+      }
+    ],
+    "latency": [
+      {
+        "metric": {},
+        "value": [
+          1792950314.102,
+          "58.5"
+        ]
+      }
+    ],
+    "tools": [
+      {
+        "metric": {
+          "server": "release"
+        },
+        "value": [
+          1792950314.102,
+          "4"
+        ]
+      },
+      {
+        "metric": {
+          "server": "knowledge"
+        },
+        "value": [
+          1792950314.102,
+          "5"
+        ]
+      }
+    ]
+  }
+}
