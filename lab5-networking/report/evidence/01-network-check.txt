@@ -1,0 +1,21 @@
+2026-10-25T22:16:22+03:00
+NAME                           READY   STATUS    RESTARTS   AGE     IP             NODE           NOMINATED NODE   READINESS GATES
+shop-api-695699fbf-mgplg       1/1     Running   0          5m22s   10.244.2.204   lab5-worker2   <none>           <none>
+shop-api-695699fbf-mxt7z       1/1     Running   0          5m22s   10.244.2.198   lab5-worker2   <none>           <none>
+shop-api-695699fbf-t8z64       1/1     Running   0          5m22s   10.244.1.159   lab5-worker    <none>           <none>
+shop-db-1                      1/1     Running   0          5m9s    10.244.2.234   lab5-worker2   <none>           <none>
+shop-worker-85bfb59f55-5mqqv   1/1     Running   0          5m22s   10.244.2.132   lab5-worker2   <none>           <none>
+shop-worker-85bfb59f55-n97hk   1/1     Running   0          5m22s   10.244.1.161   lab5-worker    <none>           <none>
+
+Source: shop-api-695699fbf-t8z64 on lab5-worker
+Target: shop-api-695699fbf-mgplg on lab5-worker2 (10.244.2.204)
+Inside pod: eth0 IP=10.244.1.159
+ifindex=18
+iflink=19
+address=f6:b3:f6:a8:36:75
+
+Peer interface on lab5-worker (index 19):
+19: lxc6894d3ddab56@if18: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default qlen 1000\    link/ether d2:b7:45:be:37:1a brd ff:ff:ff:ff:ff:ff link-netns cni-e4dc31ec-f48b-6f00-7a76-98934a23a4be
+
+Direct cross-node request (without Service):
+http://10.244.2.204:8000/health HTTP 200 ok

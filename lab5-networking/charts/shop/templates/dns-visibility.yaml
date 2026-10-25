@@ -1,0 +1,25 @@
+{{- if and .Values.networkPolicy.enabled .Values.dnsVisibility.enabled }}
+{{- range .Values.networkPolicy.policies }}
+{{- if eq .name "dns" }}
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ $.Release.Name }}-dns-visibility
+spec:
+  endpointSelector:
+    {{- toYaml .spec.podSelector | nindent 4 }}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            "k8s:io.kubernetes.pod.namespace": {{ $.Values.dnsVisibility.namespace | quote }}
+            {{- toYaml $.Values.dnsVisibility.labels | nindent 12 }}
+      toPorts:
+        - ports:
+            - port: {{ $.Values.dnsVisibility.port | quote }}
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+{{- end }}
+{{- end }}
+{{- end }}

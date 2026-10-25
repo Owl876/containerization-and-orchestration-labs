@@ -1,0 +1,23 @@
+# Используем диапазоны PodCIDR, назначенные Kubernetes нодам.
+ipam:
+  mode: kubernetes
+
+# Service обслуживает kube-proxy; Cilium отвечает за сеть и политики.
+kubeProxyReplacement: false
+
+operator:
+  replicas: 1
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+  metrics:
+    enabled:
+      - "flow:labelsContext=source_namespace,destination_namespace"
+      - "drop:labelsContext=source_namespace,destination_namespace"
+      - "tcp:labelsContext=source_namespace,destination_namespace"
+      - "dns:labelsContext=source_namespace,destination_namespace"
+    port: 9965

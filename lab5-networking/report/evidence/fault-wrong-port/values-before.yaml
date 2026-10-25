@@ -1,0 +1,143 @@
+monitoring:
+  enabled: false
+networkPolicy:
+  enabled: true
+  policies:
+  - name: default-deny
+    spec:
+      podSelector: {}
+      policyTypes:
+      - Ingress
+      - Egress
+  - name: dns
+    spec:
+      egress:
+      - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+        to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      podSelector: {}
+      policyTypes:
+      - Egress
+  - name: client
+    spec:
+      egress:
+      - ports:
+        - port: 8001
+          protocol: TCP
+        to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: shop
+              app.kubernetes.io/name: api
+      podSelector:
+        matchLabels:
+          app: panda-client
+      policyTypes:
+      - Egress
+  - name: api
+    spec:
+      egress:
+      - ports:
+        - port: 5432
+          protocol: TCP
+        to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: shop-db
+      ingress:
+      - from:
+        - podSelector:
+            matchLabels:
+              app: panda-client
+        ports:
+        - port: 8000
+          protocol: TCP
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: shop
+          app.kubernetes.io/name: api
+      policyTypes:
+      - Ingress
+      - Egress
+  - name: worker
+    spec:
+      egress:
+      - ports:
+        - port: 5432
+          protocol: TCP
+        to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: shop-db
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: shop
+          app.kubernetes.io/name: worker
+      policyTypes:
+      - Egress
+  - name: database
+    spec:
+      egress:
+      - ports:
+        - port: 5432
+          protocol: TCP
+        - port: 8000
+          protocol: TCP
+        to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: shop-db
+      - ports:
+        - port: 443
+          protocol: TCP
+        to:
+        - ipBlock:
+            cidr: 10.96.0.1/32
+      - ports:
+        - port: 6443
+          protocol: TCP
+        to:
+        - ipBlock:
+            cidr: 172.18.0.3/32
+      ingress:
+      - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: shop
+              app.kubernetes.io/name: api
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: shop
+              app.kubernetes.io/name: worker
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: shop-db
+        ports:
+        - port: 5432
+          protocol: TCP
+      - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: cnpg
+              app.kubernetes.io/name: cloudnative-pg
+        ports:
+        - port: 8000
+          protocol: TCP
+      podSelector:
+        matchLabels:
+          cnpg.io/cluster: shop-db
+      policyTypes:
+      - Ingress
+      - Egress
