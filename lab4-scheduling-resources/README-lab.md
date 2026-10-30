@@ -123,7 +123,7 @@ CPU и память подов во время волн нагрузки:
 
 **Порядок eviction.** kubelet выселяет сначала поды, превысившие свои `requests`, и среди них первыми тех, у кого ниже приоритет. Guaranteed-поды превысить `requests` не могут и стоят в очереди последними. `batch` попадает в первую группу, как только потребляет больше своих `requests`, и там у него самый низкий приоритет. BestEffort-мониторинг превышает нулевые `requests` всегда, но с приоритетом 0 идёт после `batch`.
 
-<img src="report/memes/photo_2026-10-25_21-03-23.jpg" alt="<Тесты>" height="300">
+<img src="report/memes/photo_2026-10-25_21-03-23.jpg" alt="<Тесты>" height="500">
 
 ## Часть 6. Pending и preemption
 
@@ -204,7 +204,7 @@ QoS и приоритет защищают от eviction, но не от `OOMKil
 
 ![Prometheus, ShopNodeMemoryPressure в состоянии Firing, остальные алерты Inactive](report/screenshots/9-alert-firing.png)
 
-<img src="report/memes/photo_2026-10-25_21-03-22.jpg" alt="<Скорость>" height="300">
+<img src="report/memes/photo_2026-10-25_21-03-22.jpg" alt="<Скорость>" height="500">
 
 ## Итоги
 
